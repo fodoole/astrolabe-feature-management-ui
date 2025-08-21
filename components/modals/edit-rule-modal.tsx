@@ -202,22 +202,35 @@ export function EditRuleModal({
             {!hasPercentageSplit && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="returnValue" className="text-right">Return Value</Label>
-                <Input
-                  id="returnValue"
-                  value={returnValue}
-                  onChange={(e) => setReturnValue(e.target.value)}
-                  placeholder={
-                    flagDataType === "boolean"
-                      ? "true or false"
-                      : flagDataType === "number"
+                {flagDataType === "boolean" ? (
+                  <Select 
+                    value={String(returnValue)} 
+                    onValueChange={setReturnValue}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">true</SelectItem>
+                      <SelectItem value="false">false</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    id="returnValue"
+                    value={returnValue}
+                    onChange={(e) => setReturnValue(e.target.value)}
+                    placeholder={
+                      flagDataType === "number"
                         ? "123"
                         : flagDataType === "json"
                           ? '{"key": "value"}'
                           : "string value"
-                  }
-                  className="col-span-3"
-                  required
-                />
+                    }
+                    className="col-span-3"
+                    required
+                  />
+                )}
               </div>
             )}
           </div>

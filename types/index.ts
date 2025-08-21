@@ -8,7 +8,15 @@ export type Environment = "development" | "staging" | "production"
 
 export type LogicalOperator = "AND" | "OR"
 
-export type ComparisonOperator = "equals" | "not_equals" | "greater_than" | "less_than" | "contains" | "in" | "not_in" | "percentage_split"
+export type ComparisonOperator =
+  | "equals"
+  | "not_equals"
+  | "greater_than"
+  | "less_than"
+  | "contains"
+  | "in"
+  | "not_in"
+  | "modulus_equals"
 
 export interface User {
   id: string
@@ -30,6 +38,7 @@ export interface Team {
 
 export interface Project {
   id: string
+  key: string
   name: string
   description?: string
   teamIds: string[]
@@ -45,18 +54,18 @@ export interface GlobalAttribute {
   possibleValues?: string[] // For enum-like attributes
 }
 
-export interface PercentageSplit {
-  percentage: number
-  value: any
-  label?: string
-}
-
 export interface RuleCondition {
   attributeId: string
   operator: ComparisonOperator
   value: string | number | boolean
   listValues?: string[] // For "in" and "not_in" operators
-  percentageSplits?: PercentageSplit[] // For percentage_split operator
+  modulusValue?: number // For "modulus_equals" operator (the divisor)
+}
+
+export interface TrafficSplit {
+  percentage: number
+  value: any
+  label?: string
 }
 
 export interface Rule {
@@ -64,13 +73,9 @@ export interface Rule {
   name: string
   conditions: RuleCondition[]
   logicalOperator: LogicalOperator
-  returnValue: any
+  returnValue?: any // Optional when using traffic splits
   enabled: boolean
-}
-
-export interface TrafficSplit {
-  percentage: number
-  value: any
+  trafficSplits?: TrafficSplit[] // Rule-level traffic splits
 }
 
 export interface EnvironmentConfig {
@@ -78,7 +83,7 @@ export interface EnvironmentConfig {
   enabled: boolean
   defaultValue: any
   rules: Rule[]
-  trafficSplits: TrafficSplit[]
+  trafficSplits: TrafficSplit[] // Environment-level traffic splits
 }
 
 export interface FeatureFlag {

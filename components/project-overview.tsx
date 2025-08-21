@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Plus, Users, Flag, Activity } from 'lucide-react'
+import { Plus, Users, Flag, Activity } from "lucide-react"
 import { useState } from "react"
 import { NewProjectModal } from "./modals/new-project-modal"
 import type { Project, Team, User, FeatureFlag } from "../types"
@@ -17,7 +17,14 @@ interface ProjectOverviewProps {
   onNavigateToFlags?: () => void
 }
 
-export function ProjectOverview({ projects, teams, users, flags, onSelectProject, onNavigateToFlags }: ProjectOverviewProps) {
+export function ProjectOverview({
+  projects,
+  teams,
+  users,
+  flags,
+  onSelectProject,
+  onNavigateToFlags,
+}: ProjectOverviewProps) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
 
   const getProjectStats = (projectId: string) => {
@@ -39,7 +46,7 @@ export function ProjectOverview({ projects, teams, users, flags, onSelectProject
     onNavigateToFlags?.()
   }
 
-  const handleCreateProject = (projectData: { name: string; description: string; teamIds: string[] }) => {
+  const handleCreateProject = (projectData: { name: string; key: string; description: string; teamIds: string[] }) => {
     console.log("Creating project:", projectData)
     // In a real app, this would make an API call
   }
@@ -70,7 +77,10 @@ export function ProjectOverview({ projects, teams, users, flags, onSelectProject
             >
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{project.name}</CardTitle>
+                  <div className="space-y-1">
+                    <CardTitle className="text-lg">{project.name}</CardTitle>
+                    <code className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{project.key}</code>
+                  </div>
                   <Badge variant="outline">
                     <Activity className="w-3 h-3 mr-1" />
                     {stats.activeFlags}/{stats.totalFlags}
