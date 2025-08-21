@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye } from 'lucide-react'
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { ReviewApprovalModal } from "./modals/review-approval-modal"
+import { updateApprovalStatus } from "@/lib/api"
 
 interface ApprovalCenterProps {
   approvals: ApprovalRequest[]
@@ -59,26 +60,33 @@ export function ApprovalCenter({ approvals, projects, users, flags }: ApprovalCe
   }
 
   const handleApprove = async (approvalId: string, comment: string) => {
-    console.log("Approving:", approvalId, "Comment:", comment)
-    // In a real app, this would make an API call to approve the request
-    // For now, we'll just log it and close the modal
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Here you would update the approval status in your state/backend
-    alert(`Approval request ${approvalId} has been approved!`)
+    try {
+      await updateApprovalStatus(approvalId, {
+        status: 'approved',
+        reviewer_id: 'current-user-id',
+        comments: comment || undefined,
+      });
+      
+      alert(`Approval request ${approvalId} has been approved!`);
+    } catch (error) {
+      console.error('Failed to approve request:', error);
+      alert(`Failed to approve request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   const handleReject = async (approvalId: string, comment: string) => {
-    console.log("Rejecting:", approvalId, "Comment:", comment)
-    // In a real app, this would make an API call to reject the request
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Here you would update the approval status in your state/backend
-    alert(`Approval request ${approvalId} has been rejected.`)
+    try {
+      await updateApprovalStatus(approvalId, {
+        status: 'rejected',
+        reviewer_id: 'current-user-id',
+        comments: comment || undefined,
+      });
+      
+      alert(`Approval request ${approvalId} has been rejected.`);
+    } catch (error) {
+      console.error('Failed to reject request:', error);
+      alert(`Failed to reject request: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   return (
@@ -233,9 +241,9 @@ export function ApprovalCenter({ approvals, projects, users, flags }: ApprovalCe
         open={showReviewModal}
         onOpenChange={setShowReviewModal}
         approval={reviewingApproval}
-        project={reviewingApproval ? getProjectById(reviewingApproval.projectId) : null}
-        user={reviewingApproval ? getUserById(reviewingApproval.requestedBy) : null}
-        flag={reviewingApproval ? getFlagById(reviewingApproval.flagId) : null}
+        project={reviewingApproval ? getProjectById(reviewingApproval.projectId) || null : null}
+        user={reviewingApproval ? getUserById(reviewingApproval.requestedBy) || null : null}
+        flag={reviewingApproval ? getFlagById(reviewingApproval.flagId) || null : null}
         onApprove={handleApprove}
         onReject={handleReject}
       />
