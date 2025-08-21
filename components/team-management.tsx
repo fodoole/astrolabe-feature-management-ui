@@ -7,25 +7,51 @@ import { Plus, Users, Settings } from "lucide-react"
 import type { Team, User } from "../types"
 import { NewTeamModal } from "./modals/new-team-modal"
 import { ManageTeamModal } from "./modals/manage-team-modal"
+import { createTeam, updateTeam } from "../lib/api-services"
 
 interface TeamManagementProps {
   teams: Team[]
   users: User[]
+  onTeamsChange?: (teams: Team[]) => void
 }
 
-export function TeamManagement({ teams, users }: TeamManagementProps) {
+export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementProps) {
   const [showNewTeamModal, setShowNewTeamModal] = useState(false)
   const [showManageModal, setShowManageModal] = useState(false)
   const [managingTeam, setManagingTeam] = useState<Team | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
-  const handleCreateTeam = (teamData: { name: string }) => {
-    console.log("Creating team:", teamData)
-    // In a real app, this would make an API call
+  const handleCreateTeam = async (teamData: { name: string }) => {
+    setIsCreating(true)
+    try {
+      const newTeam = await createTeam(teamData)
+      const updatedTeams = [...teams, newTeam]
+      onTeamsChange?.(updatedTeams)
+      setShowNewTeamModal(false)
+    } catch (error) {
+      console.error("Failed to create team:", error)
+      alert("Failed to create team. Please try again.")
+    } finally {
+      setIsCreating(false)
+    }
   }
 
-  const handleUpdateTeam = (teamId: string, updates: Partial<Team>) => {
-    console.log("Updating team:", teamId, updates)
-    // In a real app, this would make an API call
+  const handleUpdateTeam = async (teamId: string, updates: Partial<Team>) => {
+    setIsUpdating(true)
+    try {
+      const updatedTeam = await updateTeam(teamId, { name: updates.name })
+      const updatedTeams = teams.map(team => 
+        team.id === teamId ? { ...team, ...updates } : team
+      )
+      onTeamsChange?.(updatedTeams)
+      setShowManageModal(false)
+    } catch (error) {
+      console.error("Failed to update team:", error)
+      alert("Failed to update team. Please try again.")
+    } finally {
+      setIsUpdating(false)
+    }
   }
 
   const handleManageTeam = (team: Team) => {
@@ -40,9 +66,9 @@ export function TeamManagement({ teams, users }: TeamManagementProps) {
           <h1 className="text-3xl font-bold">Teams</h1>
           <p className="text-muted-foreground">Manage your organization teams</p>
         </div>
-        <Button onClick={() => setShowNewTeamModal(true)}>
+        <Button onClick={() => setShowNewTeamModal(true)} disabled={isCreating}>
           <Plus className="w-4 h-4 mr-2" />
-          New Team
+          {isCreating ? "Creating..." : "New Team"}
         </Button>
       </div>
 
@@ -77,9 +103,9 @@ export function TeamManagement({ teams, users }: TeamManagementProps) {
           <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No teams yet</h3>
           <p className="text-muted-foreground mb-4">Create your first team to organize access to your flags</p>
-          <Button onClick={() => setShowNewTeamModal(true)}>
+          <Button onClick={() => setShowNewTeamModal(true)} disabled={isCreating}>
             <Plus className="w-4 h-4 mr-2" />
-            Create Team
+            {isCreating ? "Creating..." : "Create Team"}
           </Button>
         </div>
       )}
