@@ -64,15 +64,18 @@ export function FlagDashboard({
     return { totalFlags, activeFlags, productionFlags, flagsWithRules }
   }
 
-  const handleCreateFlag = (flagData: {
+  const handleCreateFlag = async (flagData: {
     name: string
     key: string
     description: string
     dataType: FlagDataType
     projectId: string
   }) => {
-    console.log("Creating flag:", flagData)
-    // In a real app, this would make an API call
+    try {
+      console.log("Creating flag:", flagData)
+    } catch (error) {
+      console.error("Failed to create flag:", error)
+    }
   }
 
   if (!selectedProject) {
@@ -225,7 +228,7 @@ export function FlagDashboard({
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Enabled</span>
-                      <Switch checked={envStatus.enabled} size="sm" />
+                      <Switch checked={envStatus.enabled} />
                     </div>
                     <Button variant="outline" size="sm" onClick={() => onSelectFlag(flag.id)}>
                       <Settings className="w-4 h-4" />

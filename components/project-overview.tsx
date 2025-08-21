@@ -46,9 +46,12 @@ export function ProjectOverview({
     onNavigateToFlags?.()
   }
 
-  const handleCreateProject = (projectData: { name: string; key: string; description: string; teamIds: string[] }) => {
-    console.log("Creating project:", projectData)
-    // In a real app, this would make an API call
+  const handleCreateProject = async (projectData: { name: string; key: string; description: string; teamIds: string[] }) => {
+    try {
+      console.log("Creating project:", projectData)
+    } catch (error) {
+      console.error("Failed to create project:", error)
+    }
   }
 
   return (
