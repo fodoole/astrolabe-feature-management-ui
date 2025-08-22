@@ -7,7 +7,8 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const path = params.path.join('/')
+    const p = await params;
+    const path = p.path.join('/')
     const searchParams = request.nextUrl.searchParams
     const queryString = searchParams.toString()
     const url = `${API_BASE_URL}/${path}${queryString ? `?${queryString}` : ''}`
@@ -50,7 +51,8 @@ export async function POST(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const path = params.path.join('/')
+    const p = await params;
+    const path = p.path.join('/')
     const body = await request.text()
     const url = `${API_BASE_URL}/${path}`
     
