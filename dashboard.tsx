@@ -194,7 +194,7 @@ export default function FeatureFlagDashboard() {
                     onNavigateToFlags={() => setActiveTab("flags")}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={teams} users={users} />}
+                {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
@@ -220,6 +220,8 @@ export default function FeatureFlagDashboard() {
                     projects={projects}
                     users={users}
                     flags={featureFlags}
+                    currentUserId="00000000-0000-0000-0000-000000000000"
+                    onApprovalsChange={setApprovals}
                   />
                 )}
 

@@ -54,15 +54,22 @@ export interface GlobalAttributeDTO {
 
 export interface ApprovalRequestDTO {
   id: string
-  flagId: string
+  entityId: string
+  entityType: string
+  entityName: string
   projectId: string
+  projectName: string
   requestedBy: string
+  requestedByName: string
   requestedAt: string
   status: string
   reviewedBy?: string
+  reviewedByName?: string
   reviewedAt?: string
+  action: string
+  beforeSnapshot?: any
+  afterSnapshot?: any
   comments?: string
-  changes: any
 }
 
 export async function fetchUsers(limit = 100, offset = 0): Promise<User[]> {
@@ -197,24 +204,33 @@ export async function fetchApprovals(status?: string, limit = 100, offset = 0): 
     
     const response = await apiRequest<{approvalRequests: ApprovalRequestDTO[], totalCount: number}>(endpoint)
     console.log('fetchApprovals response:', response)
+    console.log('First approval item:', response.approvalRequests[0])
     
     if (!response || !response.approvalRequests) {
       console.warn('Unexpected response structure for approvals:', response)
       return []
     }
     
-    return response.approvalRequests.map(approval => ({
-      id: approval.id,
-      flagId: approval.flagId,
-      projectId: approval.projectId,
-      requestedBy: approval.requestedBy,
-      requestedAt: new Date(approval.requestedAt),
-      status: approval.status as any,
-      reviewedBy: approval.reviewedBy,
-      reviewedAt: approval.reviewedAt ? new Date(approval.reviewedAt) : undefined,
-      comments: approval.comments,
-      changes: approval.changes
-    }))
+    return response.approvalRequests.map(approval => {
+      console.log('Mapping approval:', approval)
+      return {
+        id: approval.id,
+        flagId: approval.entityType === 'feature_flag' ? approval.entityId : undefined,
+        projectId: approval.projectId,
+        requestedBy: approval.requestedBy,
+        requestedAt: new Date(approval.requestedAt),
+        status: approval.status as any,
+        reviewedBy: approval.reviewedBy,
+        reviewedAt: approval.reviewedAt ? new Date(approval.reviewedAt) : undefined,
+        comments: approval.comments,
+        changes: {
+          environment: 'production',
+          action: approval.action,
+          newValue: approval.afterSnapshot,
+          oldValue: approval.beforeSnapshot
+        }
+      }
+    })
   } catch (error) {
     console.error('Error fetching approvals:', error)
     return []
@@ -264,5 +280,89 @@ export async function createFeatureFlag(data: {
     createdAt: new Date(response.createdAt),
     updatedAt: new Date(response.updatedAt),
     createdBy: response.createdBy
+  }
+}
+
+export async function createTeam(data: { name: string }): Promise<Team> {
+  const response = await apiRequest<TeamDTO>('/teams/', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+  
+  return {
+    id: response.id,
+    name: response.name,
+    members: []
+  }
+}
+
+export async function updateTeam(teamId: string, data: { name?: string }): Promise<Team> {
+  const response = await apiRequest<TeamDTO>(`/teams/${teamId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+  
+  return {
+    id: response.id,
+    name: response.name,
+    members: []
+  }
+}
+
+export async function approveRequest(requestId: string, reviewerId: string, comment?: string): Promise<ApprovalRequest> {
+  const response = await apiRequest<ApprovalRequestDTO>(`/approvals/${requestId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      status: 'approved',
+      reviewer_id: reviewerId,
+      comments: comment
+    })
+  })
+  
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
+  }
+}
+
+export async function rejectRequest(requestId: string, reviewerId: string, comment?: string): Promise<ApprovalRequest> {
+  const response = await apiRequest<ApprovalRequestDTO>(`/approvals/${requestId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      status: 'rejected',
+      reviewer_id: reviewerId,
+      comments: comment
+    })
+  })
+  
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
   }
 }

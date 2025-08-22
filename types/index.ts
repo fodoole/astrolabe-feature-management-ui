@@ -114,7 +114,7 @@ export interface ChangeLog {
 
 export interface ApprovalRequest {
   id: string
-  flagId: string
+  flagId?: string
   projectId: string
   requestedBy: string
   requestedAt: Date
