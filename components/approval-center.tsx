@@ -31,7 +31,7 @@ const statusColors = {
   rejected: "destructive" as const,
 }
 
-export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "current-user-id", onApprovalsChange }: ApprovalCenterProps) {
+export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange }: ApprovalCenterProps) {
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)

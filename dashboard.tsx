@@ -220,7 +220,7 @@ export default function FeatureFlagDashboard() {
                     projects={projects}
                     users={users}
                     flags={featureFlags}
-                    currentUserId="current-user-id"
+                    currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
                   />
                 )}
