@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Users, Flag, Activity } from "lucide-react"
 import { useState } from "react"
 import { NewProjectModal } from "./modals/new-project-modal"
+import { createProject } from "../lib/api-services"
 import type { Project, Team, User, FeatureFlag } from "../types"
 
 interface ProjectOverviewProps {
@@ -15,6 +16,7 @@ interface ProjectOverviewProps {
   flags: FeatureFlag[]
   onSelectProject: (projectId: string) => void
   onNavigateToFlags?: () => void
+  onProjectsChange?: (projects: Project[]) => void
 }
 
 export function ProjectOverview({
@@ -24,6 +26,7 @@ export function ProjectOverview({
   flags,
   onSelectProject,
   onNavigateToFlags,
+  onProjectsChange,
 }: ProjectOverviewProps) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
 
@@ -48,7 +51,17 @@ export function ProjectOverview({
 
   const handleCreateProject = async (projectData: { name: string; key: string; description: string; teamIds: string[] }) => {
     try {
-      console.log("Creating project:", projectData)
+      const newProject = await createProject({
+        name: projectData.name,
+        key: projectData.key,
+        description: projectData.description
+      })
+      
+      if (onProjectsChange) {
+        onProjectsChange([...projects, newProject])
+      }
+      
+      setShowNewProjectModal(false)
     } catch (error) {
       console.error("Failed to create project:", error)
     }
