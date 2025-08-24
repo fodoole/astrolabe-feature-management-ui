@@ -6,7 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle } from 'lucide-react'
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3 } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type {
   Project,
@@ -56,6 +58,8 @@ export function FlagEditor({
   const [isCreatingFlag, setIsCreatingFlag] = useState(false)
   const [createFlagMessage, setCreateFlagMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [localFlags, setLocalFlags] = useState<FeatureFlag[]>([])
+  const [isEditingDefaultValue, setIsEditingDefaultValue] = useState(false)
+  const [tempDefaultValue, setTempDefaultValue] = useState("")
 
   useEffect(() => {
     setHasUnsavedChanges(false)
@@ -327,6 +331,66 @@ export function FlagEditor({
     setHasUnsavedChanges(true)
   }
 
+  const handleStartEditingDefaultValue = () => {
+    setTempDefaultValue(formatValueForEditing(currentEnvironmentConfig?.defaultValue, currentFlag?.dataType))
+    setIsEditingDefaultValue(true)
+  }
+
+  const handleSaveDefaultValue = () => {
+    if (!currentFlag) return
+
+    try {
+      let parsedValue: any = tempDefaultValue
+
+      if (currentFlag.dataType === 'boolean') {
+        parsedValue = tempDefaultValue === 'true'
+      } else if (currentFlag.dataType === 'number') {
+        parsedValue = Number(tempDefaultValue)
+        if (isNaN(parsedValue)) {
+          alert('Invalid number format')
+          return
+        }
+      } else if (currentFlag.dataType === 'json') {
+        parsedValue = JSON.parse(tempDefaultValue)
+      }
+      // string type uses the value as-is
+
+      handleUpdateDefaultValue(parsedValue)
+      setIsEditingDefaultValue(false)
+    } catch (error) {
+      alert('Invalid value format')
+    }
+  }
+
+  const handleCancelEditingDefaultValue = () => {
+    setIsEditingDefaultValue(false)
+    setTempDefaultValue("")
+  }
+
+  const formatValueForEditing = (value: any, dataType?: FlagDataType): string => {
+    if (value === null || value === undefined) {
+      return dataType === 'boolean' ? 'false' : 
+             dataType === 'number' ? '0' : 
+             dataType === 'json' ? '{}' : ''
+    }
+    
+    if (dataType === 'json') {
+      return JSON.stringify(value, null, 2)
+    }
+    
+    return String(value)
+  }
+
+  const formatValueForDisplay = (value: any, dataType?: FlagDataType): string => {
+    if (value === null || value === undefined) return 'null'
+    
+    if (dataType === 'json') {
+      return JSON.stringify(value, null, 2)
+    }
+    
+    return String(value)
+  }
+
   const handleSaveChanges = async () => {
     if (!currentFlag || !selectedProject) return
     
@@ -488,22 +552,86 @@ export function FlagEditor({
                     <CardContent>
                       <div className="space-y-4">
                         <div>
-                          <label className="text-sm font-medium">Default Value</label>
-                          <div className="mt-1 p-2 bg-muted rounded text-sm font-mono cursor-pointer hover:bg-muted/80" 
-                               onClick={() => {
-                                 const newValue = prompt('Enter new default value:', JSON.stringify(currentEnvironmentConfig?.defaultValue))
-                                 if (newValue !== null) {
-                                   try {
-                                     const parsedValue = JSON.parse(newValue)
-                                     handleUpdateDefaultValue(parsedValue)
-                                   } catch {
-                                     handleUpdateDefaultValue(newValue)
-                                   }
-                                 }
-                               }}>
-                            {JSON.stringify(currentEnvironmentConfig?.defaultValue)}
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-sm font-medium">Default Value</label>
+                            {!isEditingDefaultValue && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={handleStartEditingDefaultValue}
+                                className="h-6 px-2"
+                              >
+                                <Edit3 className="w-3 h-3 mr-1" />
+                                Edit
+                              </Button>
+                            )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">Click to edit</p>
+                          
+                          {isEditingDefaultValue ? (
+                            <div className="space-y-3">
+                              {currentFlag?.dataType === 'boolean' ? (
+                                <Select value={tempDefaultValue} onValueChange={setTempDefaultValue}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="true">true</SelectItem>
+                                    <SelectItem value="false">false</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : currentFlag?.dataType === 'number' ? (
+                                <input
+                                  type="number"
+                                  value={tempDefaultValue}
+                                  onChange={(e) => setTempDefaultValue(e.target.value)}
+                                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                                  placeholder="Enter a number"
+                                />
+                              ) : currentFlag?.dataType === 'json' ? (
+                                <Textarea
+                                  value={tempDefaultValue}
+                                  onChange={(e) => setTempDefaultValue(e.target.value)}
+                                  className="font-mono text-sm min-h-[100px]"
+                                  placeholder="Enter valid JSON"
+                                />
+                              ) : (
+                                <input
+                                  type="text"
+                                  value={tempDefaultValue}
+                                  onChange={(e) => setTempDefaultValue(e.target.value)}
+                                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                                  placeholder="Enter a string value"
+                                />
+                              )}
+                              
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={handleSaveDefaultValue}>
+                                  Save
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
+                                  Cancel
+                                </Button>
+                              </div>
+                              
+                              <p className="text-xs text-muted-foreground">
+                                {currentFlag?.dataType === 'boolean' && "Select true or false"}
+                                {currentFlag?.dataType === 'number' && "Enter a valid number"}
+                                {currentFlag?.dataType === 'string' && "Enter any text value"}
+                                {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.)"}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="mt-1 p-3 bg-muted rounded border">
+                              <div className="text-sm font-mono whitespace-pre-wrap">
+                                {formatValueForDisplay(currentEnvironmentConfig?.defaultValue, currentFlag?.dataType)}
+                              </div>
+                              <div className="flex items-center justify-between mt-2">
+                                <p className="text-xs text-muted-foreground">
+                                  Type: {currentFlag?.dataType}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
