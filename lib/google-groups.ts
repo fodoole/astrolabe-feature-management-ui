@@ -1,8 +1,17 @@
 import { google } from 'googleapis'
 
 const ALLOWED_GROUPS = ['eng-leads@qeen.ai','engineering@qeen.ai', 'product-team@qeen.ai','sales@qeen.ai']
+const ALLOWED_DOMAIN = '@qeen.ai'
 
 export async function checkGroupMembership(userEmail: string): Promise<boolean> {
+  // Check if Google Groups validation is enabled (disabled by default)
+  const enableGroupsCheck = process.env.ENABLE_GOOGLE_GROUPS_CHECK === 'true'
+  
+  if (!enableGroupsCheck) {
+    // Fallback to simple domain check
+    return userEmail.endsWith(ALLOWED_DOMAIN)
+  }
+
   try {
     // Initialize Google Admin SDK with service account credentials
     const auth = new google.auth.GoogleAuth({
@@ -37,6 +46,7 @@ export async function checkGroupMembership(userEmail: string): Promise<boolean> 
     return false
   } catch (error) {
     console.error('Error checking group membership:', error)
-    return false
+    // Fallback to domain check if API fails
+    return userEmail.endsWith(ALLOWED_DOMAIN)
   }
 }
