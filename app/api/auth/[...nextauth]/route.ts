@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import type { NextAuthOptions } from 'next-auth'
 import { checkGroupMembership } from '@/lib/google-groups'
+import { syncUserWithBackend } from '@/lib/user-sync'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -28,16 +29,47 @@ export const authOptions: NextAuthOptions = {
           // Redirect to unauthorized page
           return '/auth/unauthorized'
         }
+        
+        try {
+          await syncUserWithBackend({
+            name: user.name || '',
+            email: user.email,
+            avatar_url: user.image || null,
+            provider: 'google',
+            provider_id: profile?.sub || account.providerAccountId || ''
+          })
+        } catch (error) {
+          console.error('Failed to sync user with backend:', error)
+        }
       }
       return true
     },
-    async jwt({ token, account, profile }) {
+    async jwt({ token, user, account }) {
       if (account) {
         token.accessToken = account.access_token
       }
+      
+      if (user?.email && !token.globalRole) {
+        try {
+          const backendUser = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
+            headers: {
+              'Authorization': `Bearer ${token.accessToken}`
+            }
+          }).then(res => res.ok ? res.json() : null)
+          
+          if (backendUser?.global_role) {
+            token.globalRole = backendUser.global_role
+          }
+        } catch (error) {
+          console.error('Failed to fetch user role from backend:', error)
+        }
+      }
+      
       return token
     },
     async session({ session, token }) {
+      session.accessToken = token.accessToken as string
+      session.user.globalRole = token.globalRole as string
       return session
     },
   },
