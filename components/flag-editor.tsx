@@ -55,16 +55,65 @@ export function FlagEditor({
   const [isSaving, setIsSaving] = useState(false)
   const [isCreatingFlag, setIsCreatingFlag] = useState(false)
   const [createFlagMessage, setCreateFlagMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [localFlags, setLocalFlags] = useState<FeatureFlag[]>([])
 
   useEffect(() => {
     setHasUnsavedChanges(false)
-  }, [selectedFlag])
+    setLocalFlags(flags)
+  }, [selectedFlag, flags])
 
-  const projectFlags = selectedProject ? flags.filter((flag) => flag.projectId === selectedProject) : flags
+  const projectFlags = selectedProject ? localFlags.filter((flag) => flag.projectId === selectedProject) : localFlags
 
-  const currentFlag = selectedFlag ? flags.find((flag) => flag.id === selectedFlag) : null
+  const currentFlag = selectedFlag ? localFlags.find((flag) => flag.id === selectedFlag) : null
 
-  const currentEnvironmentConfig = currentFlag?.environments.find((env) => env.environment === selectedEnvironment)
+  // Debug flag structure
+  console.log("Current flag environments:", currentFlag?.environments)
+  console.log("Selected environment:", selectedEnvironment)
+  
+  // More detailed debugging
+  if (currentFlag?.environments) {
+    console.log("Available environment names:", currentFlag.environments.map(env => env.environment))
+    console.log("Environment types:", currentFlag.environments.map(env => typeof env.environment))
+    console.log("Looking for environment:", selectedEnvironment, "type:", typeof selectedEnvironment)
+    console.log("Environment match found:", currentFlag.environments.some(env => env.environment === selectedEnvironment))
+    console.log("Full environments array:", JSON.stringify(currentFlag.environments, null, 2))
+  }
+  
+  // Find or create the current environment config
+  let currentEnvironmentConfig = currentFlag?.environments?.find((env) => env.environment === selectedEnvironment)
+  
+  // If environment doesn't exist, create it
+  if (currentFlag && !currentEnvironmentConfig) {
+    console.log(`Environment ${selectedEnvironment} not found, creating it...`)
+    const newEnvironmentConfig = {
+      environment: selectedEnvironment,
+      enabled: false,
+      defaultValue: currentFlag.dataType === 'boolean' ? false : 
+                   currentFlag.dataType === 'string' ? '' :
+                   currentFlag.dataType === 'number' ? 0 : null,
+      rules: [],
+      trafficSplits: []
+    }
+    
+    // Update the local flags to include the missing environment
+    setLocalFlags(prevFlags => 
+      prevFlags.map(flag => {
+        if (flag.id === currentFlag.id) {
+          return {
+            ...flag,
+            environments: [...flag.environments, newEnvironmentConfig]
+          }
+        }
+        return flag
+      })
+    )
+    
+    currentEnvironmentConfig = newEnvironmentConfig
+  }
+  
+  // Debug current environment config
+  console.log("Current environment config:", currentEnvironmentConfig)
+  console.log("Current environment rules:", currentEnvironmentConfig?.rules)
 
   const handleCreateFlag = async (flagData: {
     name: string
@@ -116,8 +165,54 @@ export function FlagEditor({
     returnValue?: any
     trafficSplits?: any[]
   }) => {
-    console.log("Creating rule:", ruleData)
+    if (!currentFlag || !selectedProject) return
+    
+    const newRule: Rule = {
+      id: `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: ruleData.name,
+      conditions: ruleData.conditions,
+      logicalOperator: ruleData.logicalOperator,
+      returnValue: ruleData.returnValue,
+      enabled: true,
+      trafficSplits: ruleData.trafficSplits
+    }
+    
+    console.log("Creating rule:", newRule)
+    console.log("Current flag:", currentFlag)
+    console.log("Selected environment:", selectedEnvironment)
+    
+    setLocalFlags(prevFlags => {
+      const updatedFlags = prevFlags.map(flag => {
+        if (flag.id === currentFlag.id) {
+          const updatedFlag = {
+            ...flag,
+            environments: flag.environments.map(env => {
+              if (env.environment === selectedEnvironment) {
+                console.log("Adding rule to environment:", env.environment)
+                console.log("Current rules:", env.rules)
+                console.log("Current rules length:", env.rules?.length || 0)
+                const updatedEnv = {
+                  ...env,
+                  rules: [...(env.rules || []), newRule]
+                }
+                console.log("Updated rules:", updatedEnv.rules)
+                console.log("Updated rules length:", updatedEnv.rules?.length || 0)
+                return updatedEnv
+              }
+              return env
+            })
+          }
+          console.log("Updated flag:", updatedFlag)
+          return updatedFlag
+        }
+        return flag
+      })
+      console.log("All updated flags:", updatedFlags)
+      return updatedFlags
+    })
+    
     setHasUnsavedChanges(true)
+    console.log("Rule creation completed")
   }
 
   const handleEditRule = (rule: Rule) => {
@@ -126,12 +221,110 @@ export function FlagEditor({
   }
 
   const handleUpdateRule = (ruleId: string, updates: Partial<Rule>) => {
-    console.log("Updating rule:", ruleId, updates)
+    if (!currentFlag) return
+    
+    setLocalFlags(prevFlags => 
+      prevFlags.map(flag => {
+        if (flag.id === currentFlag.id) {
+          return {
+            ...flag,
+            environments: flag.environments.map(env => {
+              if (env.environment === selectedEnvironment) {
+                return {
+                  ...env,
+                  rules: env.rules.map(rule => 
+                    rule.id === ruleId ? { ...rule, ...updates } : rule
+                  )
+                }
+              }
+              return env
+            })
+          }
+        }
+        return flag
+      })
+    )
+    
     setHasUnsavedChanges(true)
+    console.log("Rule updated:", ruleId, updates)
   }
 
   const handleDeleteRule = (ruleId: string) => {
-    console.log("Deleting rule:", ruleId)
+    if (!currentFlag) return
+    
+    setLocalFlags(prevFlags => 
+      prevFlags.map(flag => {
+        if (flag.id === currentFlag.id) {
+          return {
+            ...flag,
+            environments: flag.environments.map(env => {
+              if (env.environment === selectedEnvironment) {
+                return {
+                  ...env,
+                  rules: env.rules.filter(rule => rule.id !== ruleId)
+                }
+              }
+              return env
+            })
+          }
+        }
+        return flag
+      })
+    )
+    
+    setHasUnsavedChanges(true)
+    console.log("Rule deleted:", ruleId)
+  }
+
+  const handleToggleEnvironment = (enabled: boolean) => {
+    if (!currentFlag) return
+    
+    setLocalFlags(prevFlags => 
+      prevFlags.map(flag => {
+        if (flag.id === currentFlag.id) {
+          return {
+            ...flag,
+            environments: flag.environments.map(env => {
+              if (env.environment === selectedEnvironment) {
+                return {
+                  ...env,
+                  enabled
+                }
+              }
+              return env
+            })
+          }
+        }
+        return flag
+      })
+    )
+    
+    setHasUnsavedChanges(true)
+  }
+
+  const handleUpdateDefaultValue = (defaultValue: any) => {
+    if (!currentFlag) return
+    
+    setLocalFlags(prevFlags => 
+      prevFlags.map(flag => {
+        if (flag.id === currentFlag.id) {
+          return {
+            ...flag,
+            environments: flag.environments.map(env => {
+              if (env.environment === selectedEnvironment) {
+                return {
+                  ...env,
+                  defaultValue
+                }
+              }
+              return env
+            })
+          }
+        }
+        return flag
+      })
+    )
+    
     setHasUnsavedChanges(true)
   }
 
@@ -143,8 +336,12 @@ export function FlagEditor({
       const project = projects.find(p => p.id === selectedProject)
       if (!project) throw new Error("Project not found")
       
+      // Use the local flag state for saving
       const sdkConfig = transformFlagToSDKFormat(currentFlag)
       await saveFlagDefinition(project.key, currentFlag.key, sdkConfig)
+      
+      // Update the original flags state with local changes
+      await onFlagsChange()
       
       setHasUnsavedChanges(false)
       console.log("Flag definition saved successfully")
@@ -282,7 +479,10 @@ export function FlagEditor({
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-muted-foreground">Enabled</span>
-                          <Switch checked={currentEnvironmentConfig?.enabled || false} />
+                          <Switch 
+                            checked={currentEnvironmentConfig?.enabled || false} 
+                            onCheckedChange={handleToggleEnvironment}
+                          />
                         </div>
                       </div>
                     </CardHeader>
@@ -290,9 +490,21 @@ export function FlagEditor({
                       <div className="space-y-4">
                         <div>
                           <label className="text-sm font-medium">Default Value</label>
-                          <div className="mt-1 p-2 bg-muted rounded text-sm font-mono">
+                          <div className="mt-1 p-2 bg-muted rounded text-sm font-mono cursor-pointer hover:bg-muted/80" 
+                               onClick={() => {
+                                 const newValue = prompt('Enter new default value:', JSON.stringify(currentEnvironmentConfig?.defaultValue))
+                                 if (newValue !== null) {
+                                   try {
+                                     const parsedValue = JSON.parse(newValue)
+                                     handleUpdateDefaultValue(parsedValue)
+                                   } catch {
+                                     handleUpdateDefaultValue(newValue)
+                                   }
+                                 }
+                               }}>
                             {JSON.stringify(currentEnvironmentConfig?.defaultValue)}
                           </div>
+                          <p className="text-xs text-muted-foreground mt-1">Click to edit</p>
                         </div>
                       </div>
                     </CardContent>
