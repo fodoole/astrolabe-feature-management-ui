@@ -36,6 +36,12 @@ export interface Team {
   members: TeamMember[]
 }
 
+export interface TeamWithMembers {
+  id: string
+  name: string
+  members: TeamMember[]
+}
+
 export interface Project {
   id: string
   key: string

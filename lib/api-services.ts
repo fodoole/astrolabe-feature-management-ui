@@ -2,11 +2,13 @@ import { apiRequest, PaginatedResponse } from './api-client'
 import type { 
   User, 
   Team, 
+  TeamWithMembers,
   Project, 
   FeatureFlag, 
   GlobalAttribute, 
   ApprovalRequest,
-  AttributeType
+  AttributeType,
+  UserRole
 } from '../types'
 import type { SDKFlagConfig } from './flag-config-transformer'
 
@@ -24,6 +26,17 @@ export interface TeamDTO {
   name: string
   createdAt: string
   updatedAt: string
+}
+
+export interface TeamMemberDTO {
+  user_id: string
+  role_name: string
+}
+
+export interface TeamWithMembersDTO {
+  id: string
+  name: string
+  members: TeamMemberDTO[]
 }
 
 export interface ProjectDTO {
@@ -437,4 +450,23 @@ export async function getFlagDefinition(
     `/feature-flags/${projectKey}/${flagKey}/definition`
   )
   return response
+}
+
+export async function updateTeamMembers(
+  teamId: string,
+  payload: { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }
+): Promise<TeamWithMembers> {
+  const response = await apiRequest<TeamWithMembersDTO>(`/teams/${teamId}/members`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
+  
+  return {
+    id: response.id,
+    name: response.name,
+    members: response.members.map(member => ({
+      userId: member.user_id,
+      role: member.role_name.toLowerCase() as UserRole
+    }))
+  }
 }
