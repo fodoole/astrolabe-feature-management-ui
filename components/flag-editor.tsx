@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Plus, Flag, Settings, Eye, Code, Trash2 } from 'lucide-react'
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import type {
   Project,
   FeatureFlag,
@@ -22,6 +23,8 @@ import { NewFlagModal } from "./modals/new-flag-modal"
 import { NewRuleModal } from "./modals/new-rule-modal"
 import { FlagPreviewModal } from "./modals/flag-preview-modal"
 import { EditRuleModal } from "./modals/edit-rule-modal"
+import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
+import { saveFlagDefinition, createFeatureFlag } from "../lib/api-services"
 
 interface FlagEditorProps {
   projects: Project[]
@@ -46,6 +49,12 @@ export function FlagEditor({
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showEditRuleModal, setShowEditRuleModal] = useState(false)
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    setHasUnsavedChanges(false)
+  }, [selectedFlag])
 
   const projectFlags = selectedProject ? flags.filter((flag) => flag.projectId === selectedProject) : flags
 
@@ -53,25 +62,43 @@ export function FlagEditor({
 
   const currentEnvironmentConfig = currentFlag?.environments.find((env) => env.environment === selectedEnvironment)
 
-  const handleCreateFlag = (flagData: {
+  const handleCreateFlag = async (flagData: {
     name: string
     key: string
     description: string
     dataType: FlagDataType
     projectId: string
   }) => {
-    console.log("Creating flag:", flagData)
-    // In a real app, this would make an API call
+    try {
+      const project = projects.find(p => p.id === flagData.projectId)
+      if (!project) throw new Error("Project not found")
+        const flagPayload = {
+          key:flagData.key,
+          name: flagData.name,
+          description: flagData.description,
+          data_type: flagData.dataType,
+          project_id: flagData.projectId, 
+          created_by:  "00000000-0000-0000-0000-000000000000",
+          project_key: project.key,
+        };
+      await createFeatureFlag(flagPayload)
+      
+      console.log("Flag created successfully:", flagData)
+    } catch (error) {
+      console.error("Error creating flag:", error)
+      alert("Failed to create flag. Please try again.")
+    }
   }
 
   const handleCreateRule = (ruleData: {
     name: string
     conditions: RuleCondition[]
     logicalOperator: LogicalOperator
-    returnValue: any
+    returnValue?: any
+    trafficSplits?: any[]
   }) => {
     console.log("Creating rule:", ruleData)
-    // In a real app, this would make an API call
+    setHasUnsavedChanges(true)
   }
 
   const handleEditRule = (rule: Rule) => {
@@ -81,12 +108,33 @@ export function FlagEditor({
 
   const handleUpdateRule = (ruleId: string, updates: Partial<Rule>) => {
     console.log("Updating rule:", ruleId, updates)
-    // In a real app, this would make an API call
+    setHasUnsavedChanges(true)
   }
 
   const handleDeleteRule = (ruleId: string) => {
     console.log("Deleting rule:", ruleId)
-    // In a real app, this would make an API call
+    setHasUnsavedChanges(true)
+  }
+
+  const handleSaveChanges = async () => {
+    if (!currentFlag || !selectedProject) return
+    
+    try {
+      setIsSaving(true)
+      const project = projects.find(p => p.id === selectedProject)
+      if (!project) throw new Error("Project not found")
+      
+      const sdkConfig = transformFlagToSDKFormat(currentFlag)
+      await saveFlagDefinition(project.key, currentFlag.key, sdkConfig)
+      
+      setHasUnsavedChanges(false)
+      console.log("Flag definition saved successfully")
+    } catch (error) {
+      console.error("Error saving flag definition:", error)
+      alert("Failed to save flag definition. Please try again.")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (!selectedProject) {
@@ -160,13 +208,31 @@ export function FlagEditor({
         {/* Flag Details */}
         <div className="lg:col-span-2">
           {currentFlag ? (
-            <Tabs value={selectedEnvironment} onValueChange={(value) => setSelectedEnvironment(value as Environment)}>
-              <div className="flex items-center justify-between mb-4">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="development">Development</TabsTrigger>
-                  <TabsTrigger value="staging">Staging</TabsTrigger>
-                  <TabsTrigger value="production">Production</TabsTrigger>
-                </TabsList>
+            <div className="space-y-4">
+              {hasUnsavedChanges && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You have unsaved changes. Click Save to persist your changes.
+                    <Button 
+                      onClick={handleSaveChanges} 
+                      disabled={isSaving}
+                      className="ml-2"
+                      size="sm"
+                    >
+                      {isSaving ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <Tabs value={selectedEnvironment} onValueChange={(value) => setSelectedEnvironment(value as Environment)}>
+                <div className="flex items-center justify-between mb-4">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="development">Development</TabsTrigger>
+                    <TabsTrigger value="staging">Staging</TabsTrigger>
+                    <TabsTrigger value="production">Production</TabsTrigger>
+                  </TabsList>
                 <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
                   <Eye className="w-4 h-4 mr-2" />
                   Preview
@@ -278,7 +344,8 @@ export function FlagEditor({
                   )}
                 </TabsContent>
               ))}
-            </Tabs>
+              </Tabs>
+            </div>
           ) : (
             <div className="text-center py-12">
               <Code className="w-12 h-12 mx-auto text-muted-foreground mb-4" />

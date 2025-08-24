@@ -7,11 +7,11 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Plus, X, Percent } from 'lucide-react'
-import type { PercentageSplit } from "../types"
+import type { TrafficSplit } from "../types"
 
 interface PercentageSplitBuilderProps {
-  splits: PercentageSplit[]
-  onSplitsChange: (splits: PercentageSplit[]) => void
+  splits: TrafficSplit[]
+  onSplitsChange: (splits: TrafficSplit[]) => void
   flagDataType: string
 }
 
@@ -41,7 +41,7 @@ export function PercentageSplitBuilder({ splits, onSplitsChange, flagDataType }:
         return
       }
 
-      const newSplit: PercentageSplit = {
+      const newSplit: TrafficSplit = {
         percentage,
         value: parsedValue,
         label: newSplitLabel.trim() || undefined,
@@ -58,7 +58,7 @@ export function PercentageSplitBuilder({ splits, onSplitsChange, flagDataType }:
     onSplitsChange(splits.filter((_, i) => i !== index))
   }
 
-  const updateSplit = (index: number, field: keyof PercentageSplit, value: any) => {
+  const updateSplit = (index: number, field: keyof TrafficSplit, value: any) => {
     const updatedSplits = [...splits]
     updatedSplits[index] = { ...updatedSplits[index], [field]: value }
     onSplitsChange(updatedSplits)
@@ -96,9 +96,9 @@ export function PercentageSplitBuilder({ splits, onSplitsChange, flagDataType }:
                       try {
                         let parsedValue = e.target.value
                         if (flagDataType === "boolean") {
-                          parsedValue = e.target.value.toLowerCase() === "true"
+                          parsedValue = String(e.target.value.toLowerCase() === "true")
                         } else if (flagDataType === "number") {
-                          parsedValue = Number.parseFloat(e.target.value) || 0
+                          parsedValue = String(Number.parseFloat(e.target.value) || 0)
                         } else if (flagDataType === "json") {
                           parsedValue = JSON.parse(e.target.value)
                         }

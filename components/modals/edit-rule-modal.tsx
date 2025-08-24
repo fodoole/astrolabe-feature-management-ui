@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, X, Settings } from 'lucide-react'
-import type { Rule, GlobalAttribute, ComparisonOperator, LogicalOperator, RuleCondition, PercentageSplit } from "../../types"
+import type { Rule, GlobalAttribute, ComparisonOperator, LogicalOperator, RuleCondition, TrafficSplit } from "../../types"
 import { PercentageSplitBuilder } from "../percentage-split-builder"
 import { RuleConditionEditor } from "../rule-condition-editor"
 
@@ -59,28 +59,24 @@ export function EditRuleModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    const hasPercentageSplit = conditions.some((c) => c.operator === "percentage_split")
-    
-    if (!hasPercentageSplit && !returnValue.trim()) {
-      alert("Return value is required for non-percentage split rules")
+    if (!returnValue.trim()) {
+      alert("Return value is required")
       return
     }
 
     let parsedReturnValue: any = returnValue
 
-    if (!hasPercentageSplit) {
-      try {
-        if (flagDataType === "boolean") {
-          parsedReturnValue = returnValue.toLowerCase() === "true"
-        } else if (flagDataType === "number") {
-          parsedReturnValue = Number.parseFloat(returnValue)
-        } else if (flagDataType === "json") {
-          parsedReturnValue = JSON.parse(returnValue)
-        }
-      } catch (error) {
-        alert("Invalid return value format")
-        return
+    try {
+      if (flagDataType === "boolean") {
+        parsedReturnValue = returnValue.toLowerCase() === "true"
+      } else if (flagDataType === "number") {
+        parsedReturnValue = Number.parseFloat(returnValue)
+      } else if (flagDataType === "json") {
+        parsedReturnValue = JSON.parse(returnValue)
       }
+    } catch (error) {
+      alert("Invalid return value format")
+      return
     }
 
     onUpdateRule(rule.id, {
@@ -88,7 +84,7 @@ export function EditRuleModal({
       enabled,
       conditions,
       logicalOperator,
-      returnValue: hasPercentageSplit ? null : parsedReturnValue,
+      returnValue: parsedReturnValue,
     })
 
     onOpenChange(false)
@@ -116,16 +112,11 @@ export function EditRuleModal({
     const updated = [...conditions]
     updated[index] = { ...updated[index], [field]: value }
     
-    if (field === "operator" && value !== "percentage_split") {
-      updated[index].percentageSplits = undefined
-    }
-    
     setConditions(updated)
   }
 
-  const updateConditionSplits = (index: number, splits: PercentageSplit[]) => {
+  const updateConditionSplits = (index: number, splits: TrafficSplit[]) => {
     const updated = [...conditions]
-    updated[index] = { ...updated[index], percentageSplits: splits }
     setConditions(updated)
   }
 
@@ -134,8 +125,6 @@ export function EditRuleModal({
   }
 
   const getAttributeById = (id: string) => attributes.find((attr) => attr.id === id)
-
-  const hasPercentageSplit = conditions.some((c) => c.operator === "percentage_split")
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -187,7 +176,6 @@ export function EditRuleModal({
                       key={index}
                       condition={condition}
                       attributes={attributes}
-                      flagDataType={flagDataType}
                       onUpdate={(field, value) => updateCondition(index, field, value)}
                       onRemove={() => removeCondition(index)}
                       showLogicalOperator={index > 0}
@@ -199,40 +187,38 @@ export function EditRuleModal({
               )}
             </div>
 
-            {!hasPercentageSplit && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="returnValue" className="text-right">Return Value</Label>
-                {flagDataType === "boolean" ? (
-                  <Select 
-                    value={String(returnValue)} 
-                    onValueChange={setReturnValue}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="true">true</SelectItem>
-                      <SelectItem value="false">false</SelectItem>
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <Input
-                    id="returnValue"
-                    value={returnValue}
-                    onChange={(e) => setReturnValue(e.target.value)}
-                    placeholder={
-                      flagDataType === "number"
-                        ? "123"
-                        : flagDataType === "json"
-                          ? '{"key": "value"}'
-                          : "string value"
-                    }
-                    className="col-span-3"
-                    required
-                  />
-                )}
-              </div>
-            )}
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="returnValue" className="text-right">Return Value</Label>
+              {flagDataType === "boolean" ? (
+                <Select 
+                  value={String(returnValue)} 
+                  onValueChange={setReturnValue}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">true</SelectItem>
+                    <SelectItem value="false">false</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="returnValue"
+                  value={returnValue}
+                  onChange={(e) => setReturnValue(e.target.value)}
+                  placeholder={
+                    flagDataType === "number"
+                      ? "123"
+                      : flagDataType === "json"
+                        ? '{"key": "value"}'
+                        : "string value"
+                  }
+                  className="col-span-3"
+                  required
+                />
+              )}
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="destructive" onClick={handleDelete}>
