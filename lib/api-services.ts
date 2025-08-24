@@ -117,6 +117,27 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
   }
 }
 
+export async function fetchTeamsByProject(projectId: string): Promise<Team[]> {
+  try {
+    const response = await apiRequest<PaginatedResponse<TeamDTO>>(`/projects/${projectId}/teams`)
+    console.log('fetchTeamsByProject response:', response)
+    
+    if (!response || !response.items) {
+      console.warn('Unexpected response structure for project teams:', response)
+      return []
+    }
+    
+    return response.items.map(team => ({
+      id: team.id,
+      name: team.name,
+      members: []
+    }))
+  } catch (error) {
+    console.error('Error fetching teams by project:', error)
+    return []
+  }
+}
+
 export async function fetchProjects(limit = 100, offset = 0): Promise<Project[]> {
   try {
     const response = await apiRequest<{projects: ProjectDTO[], totalCount: number}>(`/projects/?limit=${limit}&offset=${offset}`)
