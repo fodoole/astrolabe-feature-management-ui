@@ -163,7 +163,6 @@ export function FlagEditor({
     conditions: RuleCondition[]
     logicalOperator: LogicalOperator
     returnValue?: any
-    trafficSplits?: any[]
   }) => {
     if (!currentFlag || !selectedProject) return
     
@@ -174,7 +173,7 @@ export function FlagEditor({
       logicalOperator: ruleData.logicalOperator,
       returnValue: ruleData.returnValue,
       enabled: true,
-      trafficSplits: ruleData.trafficSplits
+      trafficSplits: []
     }
     
     console.log("Creating rule:", newRule)
@@ -559,30 +558,6 @@ export function FlagEditor({
                     </CardContent>
                   </Card>
 
-                  {/* Traffic Splits */}
-                  {currentEnvironmentConfig?.trafficSplits && currentEnvironmentConfig.trafficSplits.length > 0 && (
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Traffic Splits</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {currentEnvironmentConfig.trafficSplits.map((split, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 border rounded">
-                              <div className="flex items-center gap-3">
-                                <div className="w-16 text-sm font-medium">{split.percentage}%</div>
-                                <div className="text-sm font-mono">{JSON.stringify(split.value)}</div>
-                              </div>
-                              <div
-                                className="h-2 bg-primary rounded"
-                                style={{ width: `${split.percentage}%`, maxWidth: "100px" }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
                 </TabsContent>
               ))}
               </Tabs>
