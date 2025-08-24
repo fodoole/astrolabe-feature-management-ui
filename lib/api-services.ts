@@ -196,11 +196,14 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<Gl
   }
 }
 
-export async function fetchApprovals(status?: string, limit = 100, offset = 0): Promise<ApprovalRequest[]> {
+export async function fetchApprovals(status?: string, projectId?: string, limit = 100, offset = 0): Promise<ApprovalRequest[]> {
   try {
     let endpoint = `/approvals/?limit=${limit}&offset=${offset}`
     if (status) {
       endpoint += `&status=${status}`
+    }
+    if (projectId) {
+      endpoint += `&project_id=${projectId}`
     }
     
     const response = await apiRequest<{approvalRequests: ApprovalRequestDTO[], totalCount: number}>(endpoint)
