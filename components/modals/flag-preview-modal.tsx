@@ -78,6 +78,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
         let ruleMatches = true
         let matchDetails: any[] = []
 
+        // Evaluate conditions
         for (const condition of rule.conditions) {
           const attribute = attributes.find(attr => attr.id === condition.attributeId)
           const userValue = userAttributes[condition.attributeId]
@@ -108,24 +109,6 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
               case "contains":
                 conditionMatches = String(userValue).includes(String(condition.value))
                 break
-              case "percentage_split":
-                // For demo, use user_id hash for consistent results
-                const userId = userAttributes["5"] || userAttributes["user_id"] || 0
-                const hash = Math.abs(Number(userId)) % 100
-                
-                if (condition.percentageSplits) {
-                  let cumulativePercentage = 0
-                  for (const split of condition.percentageSplits) {
-                    cumulativePercentage += split.percentage
-                    if (hash < cumulativePercentage) {
-                      result.value = split.value
-                      conditionMatches = true
-                      conditionDetail.actualValue = `${hash}% (→ ${JSON.stringify(split.value)})`
-                      break
-                    }
-                  }
-                }
-                break
               case "in":
                 if (condition.listValues) {
                   conditionMatches = condition.listValues.includes(String(userValue))
@@ -134,6 +117,14 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
               case "not_in":
                 if (condition.listValues) {
                   conditionMatches = !condition.listValues.includes(String(userValue))
+                }
+                break
+              case "modulus_equals":
+                if (condition.modulusValue) {
+                  const remainder = Number(userValue) % condition.modulusValue
+                  conditionMatches = remainder === Number(condition.value)
+                  conditionDetail.expectedValue = `% ${condition.modulusValue} = ${condition.value}`
+                  conditionDetail.actualValue = `${userValue} % ${condition.modulusValue} = ${remainder}`
                 }
                 break
             }
@@ -147,24 +138,42 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
             break
           } else if (rule.logicalOperator === "OR" && conditionMatches) {
             ruleMatches = true
-            // Don't break for OR, continue to collect all condition details
           }
         }
 
-        if (rule.logicalOperator === "OR") {
+        if (rule.logicalOperator === "OR" && rule.conditions.length > 0) {
           ruleMatches = matchDetails.some(detail => detail.matches)
         }
 
+        // If no conditions, rule always matches (default rule)
+        if (rule.conditions.length === 0) {
+          ruleMatches = true
+        }
+
         if (ruleMatches) {
-          if (rule.conditions.some(c => c.operator === "percentage_split")) {
-            result.reason = "percentage_split"
-          } else {
-            result.value = rule.returnValue
-            result.reason = "matched_rule"
-          }
           result.matchedRule = {
             name: rule.name,
             conditions: matchDetails
+          }
+
+          // Handle traffic splits vs simple return value
+          if (rule.trafficSplits && rule.trafficSplits.length > 0) {
+            // Use user_id for consistent traffic splitting
+            const userId = userAttributes["5"] || userAttributes["user_id"] || 0
+            const hash = Math.abs(Number(userId)) % 100
+            
+            let cumulativePercentage = 0
+            for (const split of rule.trafficSplits) {
+              cumulativePercentage += split.percentage
+              if (hash < cumulativePercentage) {
+                result.value = split.value
+                result.reason = "traffic_split"
+                break
+              }
+            }
+          } else {
+            result.value = rule.returnValue
+            result.reason = "matched_rule"
           }
           break
         }
@@ -178,10 +187,6 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
 
     setEvaluationResult(result)
     setIsEvaluating(false)
-  }
-
-  const getAttributeName = (attributeId: string) => {
-    return attributes.find(attr => attr.id === attributeId)?.name || "Unknown"
   }
 
   const presetUsers = [
@@ -315,7 +320,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={
                           evaluationResult.reason === "matched_rule" ? "default" :
-                          evaluationResult.reason === "percentage_split" ? "secondary" :
+                          evaluationResult.reason === "traffic_split" ? "secondary" :
                           evaluationResult.reason === "flag_disabled" ? "destructive" : "outline"
                         }>
                           {evaluationResult.reason.replace('_', ' ')}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   SidebarProvider,
   Sidebar,
@@ -12,6 +12,7 @@ import {
   SidebarInset,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
 import { Flag, Users, Settings, FileText, CheckCircle, Database, BookOpen } from 'lucide-react'
 import { ProjectOverview } from "./components/project-overview"
 import { TeamManagement } from "./components/team-management"
@@ -21,7 +22,15 @@ import { ChangeLog } from "./components/change-log"
 import { ApprovalCenter } from "./components/approval-center"
 import { FlagDashboard } from "./components/flag-dashboard"
 import { GetStarted } from "./components/get-started"
-import { mockData } from "./data/mock-data"
+import { 
+  fetchUsers,
+  fetchTeams,
+  fetchProjects,
+  fetchFeatureFlags,
+  fetchGlobalAttributes,
+  fetchApprovals
+} from "./lib/api-services"
+import type { User, Team, Project, FeatureFlag, GlobalAttribute, ApprovalRequest } from "./types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AstrolabeHeader } from "./components/astrolabe-header"
 
@@ -38,8 +47,73 @@ const navigationItems = [
 
 export default function FeatureFlagDashboard() {
   const [activeTab, setActiveTab] = useState("get-started")
-  const [selectedProject, setSelectedProject] = useState<string | null>(mockData.projects[0]?.id || null)
+  const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  const [users, setUsers] = useState<User[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([])
+  const [globalAttributes, setGlobalAttributes] = useState<GlobalAttribute[]>([])
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>([])
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const [
+          usersData,
+          teamsData,
+          projectsData,
+          attributesData,
+          approvalsData
+        ] = await Promise.all([
+          fetchUsers(),
+          fetchTeams(),
+          fetchProjects(),
+          fetchGlobalAttributes(),
+          fetchApprovals()
+        ])
+        
+        setUsers(usersData)
+        setTeams(teamsData)
+        setProjects(projectsData)
+        setGlobalAttributes(attributesData)
+        setApprovals(approvalsData)
+        
+        if (projectsData.length > 0 && !selectedProject) {
+          setSelectedProject(projectsData[0].id)
+        }
+      } catch (err) {
+        console.error('Failed to load data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    loadData()
+  }, [])
+
+  useEffect(() => {
+    const loadFeatureFlags = async () => {
+      if (selectedProject) {
+        try {
+          const project = projects.find(p => p.id === selectedProject)
+          const flagsData = await fetchFeatureFlags(project?.key)
+          setFeatureFlags(flagsData)
+        } catch (err) {
+          console.error('Failed to load feature flags:', err)
+        }
+      }
+    }
+    
+    loadFeatureFlags()
+  }, [selectedProject, projects])
 
   return (
     <SidebarProvider defaultOpen>
@@ -74,7 +148,7 @@ export default function FeatureFlagDashboard() {
                       <SelectValue placeholder="Select a project" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockData.projects.map((project) => (
+                      {projects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
                         </SelectItem>
@@ -85,62 +159,83 @@ export default function FeatureFlagDashboard() {
               )}
             </div>
             <div className="text-sm text-muted-foreground">
-              {activeTab !== "get-started" && selectedProject && mockData.projects.find((p) => p.id === selectedProject)?.name}
+              {activeTab !== "get-started" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
             </div>
           </header>
 
           <main className="flex-1 overflow-auto p-6">
-            {activeTab === "get-started" && <GetStarted />}
-            
-            {activeTab === "projects" && (
-              <ProjectOverview
-                projects={mockData.projects}
-                teams={mockData.teams}
-                users={mockData.users}
-                flags={mockData.flags}
-                onSelectProject={setSelectedProject}
-                onNavigateToFlags={() => setActiveTab("flags")}
-              />
+            {loading && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading...</p>
+                </div>
+              </div>
             )}
-            {activeTab === "teams" && <TeamManagement teams={mockData.teams} users={mockData.users} />}
-            {activeTab === "attributes" && <AttributeManager attributes={mockData.attributes} />}
-            {activeTab === "flags" && (
-              <FlagEditor
-                projects={mockData.projects}
-                flags={mockData.flags}
-                attributes={mockData.attributes}
-                selectedProject={selectedProject}
-                selectedFlag={selectedFlag}
-                onSelectFlag={setSelectedFlag}
-              />
+            {error && (
+              <div className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <p className="text-destructive mb-4">Error: {error}</p>
+                  <Button onClick={() => window.location.reload()}>Retry</Button>
+                </div>
+              </div>
             )}
-            {activeTab === "changelog" && (
-              <ChangeLog
-                changeLogs={mockData.changeLogs}
-                projects={mockData.projects}
-                users={mockData.users}
-                flags={mockData.flags}
-              />
-            )}
-            {activeTab === "approvals" && (
-              <ApprovalCenter
-                approvals={mockData.approvals}
-                projects={mockData.projects}
-                users={mockData.users}
-                flags={mockData.flags}
-              />
-            )}
+            {!loading && !error && (
+              <>
+                {activeTab === "get-started" && <GetStarted />}
+                
+                {activeTab === "projects" && (
+                  <ProjectOverview
+                    projects={projects}
+                    teams={teams}
+                    users={users}
+                    flags={featureFlags}
+                    onSelectProject={setSelectedProject}
+                    onNavigateToFlags={() => setActiveTab("flags")}
+                  />
+                )}
+                {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
+                {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} />}
+                {activeTab === "flags" && (
+                  <FlagEditor
+                    projects={projects}
+                    flags={featureFlags}
+                    attributes={globalAttributes}
+                    selectedProject={selectedProject}
+                    selectedFlag={selectedFlag}
+                    onSelectFlag={setSelectedFlag}
+                  />
+                )}
+                {activeTab === "changelog" && (
+                  <ChangeLog
+                    changeLogs={[]}
+                    projects={projects}
+                    users={users}
+                    flags={featureFlags}
+                  />
+                )}
+                {activeTab === "approvals" && (
+                  <ApprovalCenter
+                    approvals={approvals}
+                    projects={projects}
+                    users={users}
+                    flags={featureFlags}
+                    currentUserId="00000000-0000-0000-0000-000000000000"
+                    onApprovalsChange={setApprovals}
+                  />
+                )}
 
-            {/* Default view - Feature Flags for selected project */}
-            {activeTab === "dashboard" && (
-              <FlagDashboard
-                projects={mockData.projects}
-                flags={mockData.flags}
-                attributes={mockData.attributes}
-                selectedProject={selectedProject}
-                selectedFlag={selectedFlag}
-                onSelectFlag={setSelectedFlag}
-              />
+                {activeTab === "dashboard" && (
+                  <FlagDashboard
+                    projects={projects}
+                    flags={featureFlags}
+                    attributes={globalAttributes}
+                    selectedProject={selectedProject}
+                    selectedFlag={selectedFlag}
+                    onSelectFlag={setSelectedFlag}
+                  />
+                )}
+              </>
             )}
           </main>
         </SidebarInset>

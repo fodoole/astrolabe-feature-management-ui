@@ -31,6 +31,7 @@ export const mockData = {
   projects: [
     {
       id: "1",
+      key: "e_commerce_platform",
       name: "E-commerce Platform",
       description: "Main e-commerce application",
       teamIds: ["1", "2"],
@@ -39,6 +40,7 @@ export const mockData = {
     },
     {
       id: "2",
+      key: "mobile_app",
       name: "Mobile App",
       description: "Mobile application for iOS and Android",
       teamIds: ["1"],
@@ -107,12 +109,27 @@ export const mockData = {
               id: "4",
               name: "Country-based feature",
               conditions: [
-                { 
-                  attributeId: "1", 
-                  operator: "in" as const, 
-                  value: "", 
-                  listValues: ["US", "CA", "UK"] 
-                }
+                {
+                  attributeId: "1",
+                  operator: "in" as const,
+                  value: "",
+                  listValues: ["US", "CA", "UK"],
+                },
+              ],
+              logicalOperator: "AND" as const,
+              returnValue: true,
+              enabled: true,
+            },
+            {
+              id: "5",
+              name: "Modulus-based rollout",
+              conditions: [
+                {
+                  attributeId: "5",
+                  operator: "modulus_equals" as const,
+                  value: 0,
+                  modulusValue: 10,
+                },
               ],
               logicalOperator: "AND" as const,
               returnValue: true,
@@ -160,33 +177,26 @@ export const mockData = {
             {
               id: "3",
               name: "A/B Test Payment Options",
-              conditions: [
-                { 
-                  attributeId: "5", 
-                  operator: "percentage_split" as const, 
-                  value: 0,
-                  percentageSplits: [
-                    { 
-                      percentage: 50, 
-                      value: ["credit_card", "paypal"], 
-                      label: "Control Group" 
-                    },
-                    { 
-                      percentage: 30, 
-                      value: ["credit_card", "paypal", "apple_pay"], 
-                      label: "Apple Pay Test" 
-                    },
-                    { 
-                      percentage: 20, 
-                      value: ["credit_card", "paypal", "apple_pay", "google_pay"], 
-                      label: "Full Options" 
-                    }
-                  ]
-                }
-              ],
+              conditions: [],
               logicalOperator: "AND" as const,
-              returnValue: null,
               enabled: true,
+              trafficSplits: [
+                {
+                  percentage: 50,
+                  value: ["credit_card", "paypal"],
+                  label: "Control Group",
+                },
+                {
+                  percentage: 30,
+                  value: ["credit_card", "paypal", "apple_pay"],
+                  label: "Apple Pay Test",
+                },
+                {
+                  percentage: 20,
+                  value: ["credit_card", "paypal", "apple_pay", "google_pay"],
+                  label: "Full Options",
+                },
+              ],
             },
           ],
           trafficSplits: [],
@@ -195,6 +205,46 @@ export const mockData = {
       createdAt: new Date("2024-02-01"),
       updatedAt: new Date("2024-02-05"),
       createdBy: "2",
+    },
+    {
+      id: "3",
+      key: "show_new_feature",
+      name: "Show New Feature",
+      description: "Boolean A/B test for new feature visibility",
+      dataType: "boolean" as const,
+      projectId: "1",
+      environments: [
+        {
+          environment: "development" as const,
+          enabled: true,
+          defaultValue: false,
+          rules: [
+            {
+              id: "6",
+              name: "Feature A/B Test",
+              conditions: [{ attributeId: "3", operator: "equals" as const, value: true }],
+              logicalOperator: "AND" as const,
+              enabled: true,
+              trafficSplits: [
+                {
+                  percentage: 30,
+                  value: true,
+                  label: "Show Feature",
+                },
+                {
+                  percentage: 70,
+                  value: false,
+                  label: "Hide Feature",
+                },
+              ],
+            },
+          ],
+          trafficSplits: [],
+        },
+      ],
+      createdAt: new Date("2024-02-10"),
+      updatedAt: new Date("2024-02-12"),
+      createdBy: "1",
     },
   ] as FeatureFlag[],
 
@@ -217,10 +267,10 @@ export const mockData = {
       projectId: "1",
       userId: "2",
       timestamp: new Date("2024-02-05T14:15:00"),
-      action: "Created percentage split rule",
+      action: "Created traffic split rule",
       beforeSnapshot: null,
       afterSnapshot: { key: "payment_methods", enabled: true },
-      description: "Added A/B test for payment methods with percentage splits",
+      description: "Added A/B test for payment methods with traffic splits",
     },
   ] as ChangeLog[],
 
@@ -250,7 +300,7 @@ export const mockData = {
       comments: "Looks good, approved for production deployment",
       changes: {
         environment: "production",
-        action: "update_percentage_split",
+        action: "update_traffic_split",
         newValue: [
           { percentage: 60, value: ["credit_card", "paypal"], label: "Control" },
           { percentage: 40, value: ["credit_card", "paypal", "apple_pay"], label: "Test" },

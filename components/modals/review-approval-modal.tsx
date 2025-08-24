@@ -40,7 +40,10 @@ export function ReviewApprovalModal({
   const [comment, setComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  if (!approval || !project || !user || !flag) return null
+  if (!approval || !project || !user) {
+    console.log("ReviewApprovalModal early return:", { approval: !!approval, project: !!project, user: !!user, flag: !!flag })
+    return null
+  }
 
   const handleApprove = async () => {
     setIsSubmitting(true)
@@ -90,10 +93,12 @@ export function ReviewApprovalModal({
                 <span className="text-muted-foreground">Project:</span>
                 <div className="font-medium">{project.name}</div>
               </div>
-              <div>
-                <span className="text-muted-foreground">Flag:</span>
-                <div className="font-medium">{flag.name}</div>
-              </div>
+              {flag && (
+                <div>
+                  <span className="text-muted-foreground">Flag:</span>
+                  <div className="font-medium">{flag.name}</div>
+                </div>
+              )}
               <div>
                 <span className="text-muted-foreground">Requested by:</span>
                 <div className="flex items-center gap-2">

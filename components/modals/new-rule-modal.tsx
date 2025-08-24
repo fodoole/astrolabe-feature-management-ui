@@ -14,11 +14,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, X } from 'lucide-react'
-import type { GlobalAttribute, ComparisonOperator, LogicalOperator, RuleCondition, PercentageSplit } from "../../types"
-import { PercentageSplitBuilder } from "../percentage-split-builder"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Plus } from 'lucide-react'
+import type { GlobalAttribute, LogicalOperator, RuleCondition, TrafficSplit } from "../../types"
 import { RuleConditionEditor } from "../rule-condition-editor"
+import { TrafficSplitBuilder } from "../traffic-split-builder"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface NewRuleModalProps {
   open: boolean
@@ -29,7 +30,8 @@ interface NewRuleModalProps {
     name: string
     conditions: RuleCondition[]
     logicalOperator: LogicalOperator
-    returnValue: any
+    returnValue?: any
+    trafficSplits?: TrafficSplit[]
   }) => void
 }
 
@@ -38,48 +40,71 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
   const [conditions, setConditions] = useState<RuleCondition[]>([])
   const [logicalOperator, setLogicalOperator] = useState<LogicalOperator>("AND")
   const [returnValue, setReturnValue] = useState("")
+  const [trafficSplits, setTrafficSplits] = useState<TrafficSplit[]>([])
+  const [ruleType, setRuleType] = useState<"simple" | "traffic_split">("simple")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (name.trim() && conditions.length > 0) {
-      // For percentage split conditions, we don't need a single return value
-      const hasPercentageSplit = conditions.some((c) => c.operator === "percentage_split")
-      
-      if (!hasPercentageSplit && !returnValue.trim()) {
-        alert("Return value is required for non-percentage split rules")
+    
+    if (!name.trim()) {
+      alert("Rule name is required")
+      return
+    }
+
+    if (ruleType === "simple") {
+      if (!returnValue.trim()) {
+        alert("Return value is required for simple rules")
         return
       }
 
       let parsedReturnValue: any = returnValue
-
-      if (!hasPercentageSplit) {
-        try {
-          if (flagDataType === "boolean") {
-            parsedReturnValue = returnValue.toLowerCase() === "true"
-          } else if (flagDataType === "number") {
-            parsedReturnValue = Number.parseFloat(returnValue)
-          } else if (flagDataType === "json") {
-            parsedReturnValue = JSON.parse(returnValue)
-          }
-        } catch (error) {
-          alert("Invalid return value format")
-          return
+      try {
+        if (flagDataType === "boolean") {
+          parsedReturnValue = returnValue.toLowerCase() === "true"
+        } else if (flagDataType === "number") {
+          parsedReturnValue = Number.parseFloat(returnValue)
+        } else if (flagDataType === "json") {
+          parsedReturnValue = JSON.parse(returnValue)
         }
+      } catch (error) {
+        alert("Invalid return value format")
+        return
       }
 
       onCreateRule({
         name: name.trim(),
         conditions,
         logicalOperator,
-        returnValue: hasPercentageSplit ? null : parsedReturnValue,
+        returnValue: parsedReturnValue,
       })
+    } else {
+      if (trafficSplits.length === 0) {
+        alert("At least one traffic split is required")
+        return
+      }
 
-      setName("")
-      setConditions([])
-      setLogicalOperator("AND")
-      setReturnValue("")
-      onOpenChange(false)
+      const totalPercentage = trafficSplits.reduce((sum, split) => sum + split.percentage, 0)
+      if (totalPercentage !== 100) {
+        alert("Traffic splits must total exactly 100%")
+        return
+      }
+
+      onCreateRule({
+        name: name.trim(),
+        conditions,
+        logicalOperator,
+        trafficSplits,
+      })
     }
+
+    // Reset form
+    setName("")
+    setConditions([])
+    setLogicalOperator("AND")
+    setReturnValue("")
+    setTrafficSplits([])
+    setRuleType("simple")
+    onOpenChange(false)
   }
 
   const addCondition = () => {
@@ -96,18 +121,6 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
   const updateCondition = (index: number, field: keyof RuleCondition, value: any) => {
     const updated = [...conditions]
     updated[index] = { ...updated[index], [field]: value }
-    
-    // Reset percentage splits if operator changes away from percentage_split
-    if (field === "operator" && value !== "percentage_split") {
-      updated[index].percentageSplits = undefined
-    }
-    
-    setConditions(updated)
-  }
-
-  const updateConditionSplits = (index: number, splits: PercentageSplit[]) => {
-    const updated = [...conditions]
-    updated[index] = { ...updated[index], percentageSplits: splits }
     setConditions(updated)
   }
 
@@ -115,16 +128,12 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
     setConditions(conditions.filter((_, i) => i !== index))
   }
 
-  const getAttributeById = (id: string) => attributes.find((attr) => attr.id === id)
-
-  const hasPercentageSplit = conditions.some((c) => c.operator === "percentage_split")
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Rule</DialogTitle>
-          <DialogDescription>Define conditions that determine when this rule should apply.</DialogDescription>
+          <DialogDescription>Define conditions and return behavior for this targeting rule.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -155,7 +164,6 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
                       key={index}
                       condition={condition}
                       attributes={attributes}
-                      flagDataType={flagDataType}
                       onUpdate={(field, value) => updateCondition(index, field, value)}
                       onRemove={() => removeCondition(index)}
                       showLogicalOperator={index > 0}
@@ -165,56 +173,84 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
                   ))}
                 </div>
               )}
+
+              {conditions.length === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="text-sm font-medium text-blue-900 mb-1">💡 Default Rule</div>
+                  <div className="text-xs text-blue-700">
+                    Rules without conditions will match all users. Add conditions above to target specific users.
+                  </div>
+                </div>
+              )}
             </div>
 
-            {conditions.length === 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="text-sm font-medium text-blue-900 mb-1">💡 Default Rule</div>
-                <div className="text-xs text-blue-700">
-                  Every flag should have at least one rule. Add conditions above, or this will serve as a default rule that always matches and returns the specified value.
-                </div>
-              </div>
-            )}
+            {/* Return Value Configuration */}
+            <div className="grid gap-2">
+              <Label>Return Configuration</Label>
+              <Tabs value={ruleType} onValueChange={(value) => setRuleType(value as "simple" | "traffic_split")}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="simple">Simple Return</TabsTrigger>
+                  <TabsTrigger value="traffic_split">Traffic Split</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="simple" className="space-y-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="returnValue">Return Value</Label>
+                    {flagDataType === "boolean" ? (
+                      <Select 
+                        value={String(returnValue)} 
+                        onValueChange={setReturnValue}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select true/false" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="true">true</SelectItem>
+                          <SelectItem value="false">false</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="returnValue"
+                        value={returnValue}
+                        onChange={(e) => setReturnValue(e.target.value)}
+                        placeholder={
+                          flagDataType === "number"
+                            ? "123"
+                            : flagDataType === "json"
+                              ? '{"key": "value"}'
+                              : "string value"
+                        }
+                        required={ruleType === "simple"}
+                      />
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {flagDataType === "boolean" 
+                        ? "Boolean value to return when this rule matches"
+                        : `Value to return when this rule matches (type: ${flagDataType})`
+                      }
+                    </p>
+                  </div>
+                </TabsContent>
 
-            {/* Return Value - only show if no percentage splits */}
-            {!hasPercentageSplit && (
-              <div className="grid gap-2">
-                <Label htmlFor="returnValue">Return Value</Label>
-                <Input
-                  id="returnValue"
-                  value={returnValue}
-                  onChange={(e) => setReturnValue(e.target.value)}
-                  placeholder={
-                    flagDataType === "boolean"
-                      ? "true or false"
-                      : flagDataType === "number"
-                        ? "123"
-                        : flagDataType === "json"
-                          ? '{"key": "value"}'
-                          : "string value"
-                  }
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Value to return when this rule matches (type: {flagDataType})
-                </p>
-              </div>
-            )}
-
-            {hasPercentageSplit && (
-              <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                <div className="text-sm font-medium text-blue-900 mb-1">Percentage Split Rule</div>
-                <div className="text-xs text-blue-700">
-                  This rule uses percentage splits, so return values are defined within each split configuration above.
-                </div>
-              </div>
-            )}
+                <TabsContent value="traffic_split" className="space-y-3">
+                  <TrafficSplitBuilder
+                    splits={trafficSplits}
+                    onSplitsChange={setTrafficSplits}
+                    flagDataType={flagDataType}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Distribute traffic between different values based on percentages
+                  </p>
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={conditions.length === 0}>
+            <Button type="submit">
               Create Rule
             </Button>
           </DialogFooter>

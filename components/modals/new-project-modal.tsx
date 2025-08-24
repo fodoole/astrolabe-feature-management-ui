@@ -22,23 +22,26 @@ interface NewProjectModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   teams: Team[]
-  onCreateProject: (project: { name: string; description: string; teamIds: string[] }) => void
+  onCreateProject: (project: { name: string; key: string; description: string; teamIds: string[] }) => void
 }
 
 export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: NewProjectModalProps) {
   const [name, setName] = useState("")
+  const [key, setKey] = useState("")
   const [description, setDescription] = useState("")
   const [selectedTeams, setSelectedTeams] = useState<string[]>([])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (name.trim()) {
+    if (name.trim() && key.trim()) {
       onCreateProject({
         name: name.trim(),
+        key: key.trim(),
         description: description.trim(),
         teamIds: selectedTeams,
       })
       setName("")
+      setKey("")
       setDescription("")
       setSelectedTeams([])
       onOpenChange(false)
@@ -47,6 +50,22 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
 
   const handleTeamToggle = (teamId: string) => {
     setSelectedTeams((prev) => (prev.includes(teamId) ? prev.filter((id) => id !== teamId) : [...prev, teamId]))
+  }
+
+  const generateKey = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/^_+|_+$/g, "")
+  }
+
+  const handleNameChange = (value: string) => {
+    setName(value)
+    // Auto-generate key if it hasn't been manually edited
+    if (!key || key === generateKey(name)) {
+      setKey(generateKey(value))
+    }
   }
 
   return (
@@ -63,11 +82,24 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Enter project name"
                 required
               />
             </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="key">Project Key</Label>
+              <Input
+                id="key"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                placeholder="e.g., e_commerce_platform"
+                required
+              />
+              <p className="text-xs text-muted-foreground">Used to identify this project in APIs and SDKs</p>
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="description">Description</Label>
               <Textarea

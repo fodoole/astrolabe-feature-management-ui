@@ -8,12 +8,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye } from 'lucide-react'
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { ReviewApprovalModal } from "./modals/review-approval-modal"
+import { approveRequest, rejectRequest } from "../lib/api-services"
 
 interface ApprovalCenterProps {
   approvals: ApprovalRequest[]
   projects: Project[]
   users: UserType[]
   flags: FeatureFlag[]
+  currentUserId?: string
+  onApprovalsChange?: (approvals: ApprovalRequest[]) => void
 }
 
 const statusIcons = {
@@ -28,14 +31,14 @@ const statusColors = {
   rejected: "destructive" as const,
 }
 
-export function ApprovalCenter({ approvals, projects, users, flags }: ApprovalCenterProps) {
+export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange }: ApprovalCenterProps) {
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
 
-  const getUserById = (userId: string) => users.find((user) => user.id === userId)
-  const getProjectById = (projectId: string) => projects.find((project) => project.id === projectId)
-  const getFlagById = (flagId: string) => flags.find((flag) => flag.id === flagId)
+  const getUserById = (userId?: string) => userId ? users.find((user) => user.id === userId) || null : null
+  const getProjectById = (projectId?: string) => projectId ? projects.find((project) => project.id === projectId) || null : null
+  const getFlagById = (flagId?: string) => flagId ? flags.find((flag) => flag.id === flagId) || null : null
   const getInitials = (name: string) =>
     name
       .split(" ")
@@ -54,31 +57,40 @@ export function ApprovalCenter({ approvals, projects, users, flags }: ApprovalCe
   })
 
   const handleReview = (approval: ApprovalRequest) => {
+    console.log("handleReview called with approval:", approval)
+    console.log("project:", getProjectById(approval.projectId))
+    console.log("user:", getUserById(approval.requestedBy))
+    console.log("flag:", getFlagById(approval.flagId))
     setReviewingApproval(approval)
     setShowReviewModal(true)
   }
 
   const handleApprove = async (approvalId: string, comment: string) => {
-    console.log("Approving:", approvalId, "Comment:", comment)
-    // In a real app, this would make an API call to approve the request
-    // For now, we'll just log it and close the modal
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Here you would update the approval status in your state/backend
-    alert(`Approval request ${approvalId} has been approved!`)
+    try {
+      const updatedApproval = await approveRequest(approvalId, currentUserId, comment)
+      const updatedApprovals = approvals.map(approval => 
+        approval.id === approvalId ? updatedApproval : approval
+      )
+      onApprovalsChange?.(updatedApprovals)
+      setShowReviewModal(false)
+    } catch (error) {
+      console.error("Failed to approve request:", error)
+      alert("Failed to approve request. Please try again.")
+    }
   }
 
   const handleReject = async (approvalId: string, comment: string) => {
-    console.log("Rejecting:", approvalId, "Comment:", comment)
-    // In a real app, this would make an API call to reject the request
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Here you would update the approval status in your state/backend
-    alert(`Approval request ${approvalId} has been rejected.`)
+    try {
+      const updatedApproval = await rejectRequest(approvalId, currentUserId, comment)
+      const updatedApprovals = approvals.map(approval => 
+        approval.id === approvalId ? updatedApproval : approval
+      )
+      onApprovalsChange?.(updatedApprovals)
+      setShowReviewModal(false)
+    } catch (error) {
+      console.error("Failed to reject request:", error)
+      alert("Failed to reject request. Please try again.")
+    }
   }
 
   return (
@@ -176,15 +188,21 @@ export function ApprovalCenter({ approvals, projects, users, flags }: ApprovalCe
                 <div className="bg-muted rounded p-3">
                   <div className="text-sm font-medium mb-2">Requested Changes:</div>
                   <div className="text-xs space-y-1">
-                    <div>
-                      <span className="font-medium">Environment:</span> {approval.changes.environment}
-                    </div>
-                    <div>
-                      <span className="font-medium">Action:</span> {approval.changes.action}
-                    </div>
-                    <div className="bg-background p-2 rounded">
-                      <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue, null, 2)}</pre>
-                    </div>
+                    {approval.changes ? (
+                      <>
+                        <div>
+                          <span className="font-medium">Environment:</span> {approval.changes.environment || 'N/A'}
+                        </div>
+                        <div>
+                          <span className="font-medium">Action:</span> {approval.changes.action || 'N/A'}
+                        </div>
+                        <div className="bg-background p-2 rounded">
+                          <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue || approval.changes, null, 2)}</pre>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-muted-foreground">No change details available</div>
+                    )}
                   </div>
                 </div>
 
