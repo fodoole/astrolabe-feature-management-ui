@@ -7,6 +7,7 @@ import type {
   GlobalAttribute, 
   ApprovalRequest 
 } from '../types'
+import type { SDKFlagConfig } from './flag-config-transformer'
 
 export interface UserDTO {
   id: string
@@ -365,4 +366,38 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
       oldValue: response.beforeSnapshot
     }
   }
+}
+
+export async function saveFlagDefinition(
+  projectKey: string, 
+  flagKey: string, 
+  flagConfig: SDKFlagConfig
+): Promise<{ fileUrl: string }> {
+  const jsonBlob = new Blob([JSON.stringify(flagConfig, null, 2)], {
+    type: 'application/json'
+  })
+  
+  const formData = new FormData()
+  formData.append('file', jsonBlob, `${flagKey}.json`)
+  
+  const response = await fetch(`/api/proxy/feature-flags/${projectKey}/${flagKey}/definition`, {
+    method: 'POST',
+    body: formData
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Failed to save flag definition: ${response.statusText}`)
+  }
+  
+  return response.json()
+}
+
+export async function getFlagDefinition(
+  projectKey: string, 
+  flagKey: string
+): Promise<SDKFlagConfig> {
+  const response = await apiRequest<SDKFlagConfig>(
+    `/feature-flags/${projectKey}/${flagKey}/definition`
+  )
+  return response
 }

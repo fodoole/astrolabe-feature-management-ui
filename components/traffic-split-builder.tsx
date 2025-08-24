@@ -138,11 +138,11 @@ export function TrafficSplitBuilder({ splits, onSplitsChange, flagDataType }: Tr
           try {
             let parsedValue = e.target.value
             if (flagDataType === "number") {
-              parsedValue = Number.parseFloat(e.target.value)
+              parsedValue = String(Number.parseFloat(e.target.value))
             } else if (flagDataType === "json") {
-              parsedValue = JSON.parse(e.target.value)
+              parsedValue = JSON.stringify(JSON.parse(e.target.value))
             }
-            onChange(String(parsedValue))
+            onChange(parsedValue)
           } catch (error) {
             // Keep the raw value for now
           }
