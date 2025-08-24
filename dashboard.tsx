@@ -204,6 +204,7 @@ export default function FeatureFlagDashboard() {
                     flags={featureFlags}
                     onSelectProject={setSelectedProject}
                     onNavigateToFlags={() => setActiveTab("flags")}
+                    onProjectsChange={setProjects}
                   />
                 )}
                 {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
