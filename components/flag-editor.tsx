@@ -25,6 +25,7 @@ import { FlagPreviewModal } from "./modals/flag-preview-modal"
 import { EditRuleModal } from "./modals/edit-rule-modal"
 import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
 import { saveFlagDefinition, createFeatureFlag } from "../lib/api-services"
+import { describe } from "node:test"
 
 interface FlagEditorProps {
   projects: Project[]
@@ -72,11 +73,16 @@ export function FlagEditor({
     try {
       const project = projects.find(p => p.id === flagData.projectId)
       if (!project) throw new Error("Project not found")
-      
-      await createFeatureFlag({
-        ...flagData,
-        projectKey: project.key
-      })
+        const flagPayload = {
+          key:flagData.key,
+          name: flagData.name,
+          description: flagData.description,
+          data_type: flagData.dataType,
+          project_id: flagData.projectId, 
+          created_by:  "00000000-0000-0000-0000-000000000000",
+          project_key: project.key,
+        };
+      await createFeatureFlag(flagPayload)
       
       console.log("Flag created successfully:", flagData)
     } catch (error) {
