@@ -25,6 +25,7 @@ import { GetStarted } from "./components/get-started"
 import { 
   fetchUsers,
   fetchTeams,
+  fetchTeamsByProject,
   fetchProjects,
   fetchFeatureFlags,
   fetchGlobalAttributes,
@@ -54,6 +55,7 @@ export default function FeatureFlagDashboard() {
   
   const [users, setUsers] = useState<User[]>([])
   const [teams, setTeams] = useState<Team[]>([])
+  const [projectTeams, setProjectTeams] = useState<Team[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([])
   const [globalAttributes, setGlobalAttributes] = useState<GlobalAttribute[]>([])
@@ -111,6 +113,23 @@ export default function FeatureFlagDashboard() {
   useEffect(() => {
     loadFeatureFlags()
   }, [selectedProject, projects])
+
+  useEffect(() => {
+    const loadProjectTeams = async () => {
+      if (selectedProject) {
+        try {
+          const projectTeamsData = await fetchTeamsByProject(selectedProject)
+          setProjectTeams(projectTeamsData)
+        } catch (err) {
+          console.error('Failed to load project teams:', err)
+        }
+      } else {
+        setProjectTeams([])
+      }
+    }
+    
+    loadProjectTeams()
+  }, [selectedProject])
 
   useEffect(() => {
     const loadApprovals = async () => {
@@ -207,7 +226,7 @@ export default function FeatureFlagDashboard() {
                     onProjectsChange={setProjects}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
+                {activeTab === "teams" && <TeamManagement teams={selectedProject ? projectTeams : teams} users={users} onTeamsChange={selectedProject ? setProjectTeams : setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
