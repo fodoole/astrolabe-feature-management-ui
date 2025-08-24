@@ -16,9 +16,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus } from 'lucide-react'
-import type { GlobalAttribute, LogicalOperator, RuleCondition, TrafficSplit } from "../../types"
+import type { GlobalAttribute, LogicalOperator, RuleCondition } from "../../types"
 import { RuleConditionEditor } from "../rule-condition-editor"
-import { TrafficSplitBuilder } from "../traffic-split-builder"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface NewRuleModalProps {
@@ -30,8 +29,7 @@ interface NewRuleModalProps {
     name: string
     conditions: RuleCondition[]
     logicalOperator: LogicalOperator
-    returnValue?: any
-    trafficSplits?: TrafficSplit[]
+    returnValue: any
   }) => void
 }
 
@@ -40,8 +38,6 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
   const [conditions, setConditions] = useState<RuleCondition[]>([])
   const [logicalOperator, setLogicalOperator] = useState<LogicalOperator>("AND")
   const [returnValue, setReturnValue] = useState("")
-  const [trafficSplits, setTrafficSplits] = useState<TrafficSplit[]>([])
-  const [ruleType, setRuleType] = useState<"simple" | "traffic_split">("simple")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,59 +47,37 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
       return
     }
 
-    if (ruleType === "simple") {
-      if (!returnValue.trim()) {
-        alert("Return value is required for simple rules")
-        return
-      }
-
-      let parsedReturnValue: any = returnValue
-      try {
-        if (flagDataType === "boolean") {
-          parsedReturnValue = returnValue.toLowerCase() === "true"
-        } else if (flagDataType === "number") {
-          parsedReturnValue = Number.parseFloat(returnValue)
-        } else if (flagDataType === "json") {
-          parsedReturnValue = JSON.parse(returnValue)
-        }
-      } catch (error) {
-        alert("Invalid return value format")
-        return
-      }
-
-      onCreateRule({
-        name: name.trim(),
-        conditions,
-        logicalOperator,
-        returnValue: parsedReturnValue,
-      })
-    } else {
-      if (trafficSplits.length === 0) {
-        alert("At least one traffic split is required")
-        return
-      }
-
-      const totalPercentage = trafficSplits.reduce((sum, split) => sum + split.percentage, 0)
-      if (totalPercentage !== 100) {
-        alert("Traffic splits must total exactly 100%")
-        return
-      }
-
-      onCreateRule({
-        name: name.trim(),
-        conditions,
-        logicalOperator,
-        trafficSplits,
-      })
+    if (!returnValue.trim()) {
+      alert("Return value is required")
+      return
     }
+
+    let parsedReturnValue: any = returnValue
+    try {
+      if (flagDataType === "boolean") {
+        parsedReturnValue = returnValue.toLowerCase() === "true"
+      } else if (flagDataType === "number") {
+        parsedReturnValue = Number.parseFloat(returnValue)
+      } else if (flagDataType === "json") {
+        parsedReturnValue = JSON.parse(returnValue)
+      }
+    } catch (error) {
+      alert("Invalid return value format")
+      return
+    }
+
+    onCreateRule({
+      name: name.trim(),
+      conditions,
+      logicalOperator,
+      returnValue: parsedReturnValue,
+    })
 
     // Reset form
     setName("")
     setConditions([])
     setLogicalOperator("AND")
     setReturnValue("")
-    setTrafficSplits([])
-    setRuleType("simple")
     onOpenChange(false)
   }
 
@@ -186,64 +160,41 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
 
             {/* Return Value Configuration */}
             <div className="grid gap-2">
-              <Label>Return Configuration</Label>
-              <Tabs value={ruleType} onValueChange={(value) => setRuleType(value as "simple" | "traffic_split")}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="simple">Simple Return</TabsTrigger>
-                  <TabsTrigger value="traffic_split">Traffic Split</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="simple" className="space-y-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="returnValue">Return Value</Label>
-                    {flagDataType === "boolean" ? (
-                      <Select 
-                        value={String(returnValue)} 
-                        onValueChange={setReturnValue}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select true/false" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="true">true</SelectItem>
-                          <SelectItem value="false">false</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        id="returnValue"
-                        value={returnValue}
-                        onChange={(e) => setReturnValue(e.target.value)}
-                        placeholder={
-                          flagDataType === "number"
-                            ? "123"
-                            : flagDataType === "json"
-                              ? '{"key": "value"}'
-                              : "string value"
-                        }
-                        required={ruleType === "simple"}
-                      />
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {flagDataType === "boolean" 
-                        ? "Boolean value to return when this rule matches"
-                        : `Value to return when this rule matches (type: ${flagDataType})`
-                      }
-                    </p>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="traffic_split" className="space-y-3">
-                  <TrafficSplitBuilder
-                    splits={trafficSplits}
-                    onSplitsChange={setTrafficSplits}
-                    flagDataType={flagDataType}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Distribute traffic between different values based on percentages
-                  </p>
-                </TabsContent>
-              </Tabs>
+              <Label htmlFor="returnValue">Return Value</Label>
+              {flagDataType === "boolean" ? (
+                <Select 
+                  value={String(returnValue)} 
+                  onValueChange={setReturnValue}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select true/false" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">true</SelectItem>
+                    <SelectItem value="false">false</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="returnValue"
+                  value={returnValue}
+                  onChange={(e) => setReturnValue(e.target.value)}
+                  placeholder={
+                    flagDataType === "number"
+                      ? "123"
+                      : flagDataType === "json"
+                        ? '{"key": "value"}'
+                        : "string value"
+                  }
+                  required
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                {flagDataType === "boolean" 
+                  ? "Boolean value to return when this rule matches"
+                  : `Value to return when this rule matches (type: ${flagDataType})`
+                }
+              </p>
             </div>
           </div>
           <DialogFooter>

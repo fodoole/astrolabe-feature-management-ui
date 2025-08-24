@@ -15,8 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, X, Settings } from 'lucide-react'
-import type { Rule, GlobalAttribute, ComparisonOperator, LogicalOperator, RuleCondition, TrafficSplit } from "../../types"
-import { PercentageSplitBuilder } from "../percentage-split-builder"
+import type { Rule, GlobalAttribute, ComparisonOperator, LogicalOperator, RuleCondition } from "../../types"
 import { RuleConditionEditor } from "../rule-condition-editor"
 
 interface EditRuleModalProps {
@@ -115,10 +114,6 @@ export function EditRuleModal({
     setConditions(updated)
   }
 
-  const updateConditionSplits = (index: number, splits: TrafficSplit[]) => {
-    const updated = [...conditions]
-    setConditions(updated)
-  }
 
   const removeCondition = (index: number) => {
     setConditions(conditions.filter((_, i) => i !== index))
