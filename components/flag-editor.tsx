@@ -26,7 +26,7 @@ import { NewRuleModal } from "./modals/new-rule-modal"
 import { FlagPreviewModal } from "./modals/flag-preview-modal"
 import { EditRuleModal } from "./modals/edit-rule-modal"
 import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
-import { saveFlagDefinition, createFeatureFlag } from "../lib/api-services"
+import { createApprovalRequest, createFeatureFlag, getFlagDefinition } from "../lib/api-services"
 
 interface FlagEditorProps {
   projects: Project[]
@@ -399,18 +399,33 @@ export function FlagEditor({
       const project = projects.find(p => p.id === selectedProject)
       if (!project) throw new Error("Project not found")
       
-      // Use the local flag state for saving
-      const sdkConfig = transformFlagToSDKFormat(currentFlag)
-      await saveFlagDefinition(project.key, currentFlag.key, sdkConfig)
+      let beforeSnapshot: any = null
+      try {
+        beforeSnapshot = await getFlagDefinition(project.key, currentFlag.key)
+      } catch (error) {
+        console.log("No existing flag definition found, treating as new flag")
+      }
       
-      // Update the original flags state with local changes
-      await onFlagsChange()
+      // Use the local flag state for after snapshot
+      const afterSnapshot = transformFlagToSDKFormat(currentFlag)
+      
+      await createApprovalRequest({
+        entityType: 'feature_flag',
+        entityId: currentFlag.id,
+        projectId: project.id,
+        requestedBy: '00000000-0000-0000-0000-000000000000',
+        action: beforeSnapshot ? 'update_flag' : 'create_flag',
+        beforeSnapshot,
+        afterSnapshot,
+        comments: `Flag configuration changes for ${currentFlag.name}`
+      })
       
       setHasUnsavedChanges(false)
-      console.log("Flag definition saved successfully")
+      console.log("Approval request created successfully")
+      alert("Approval request created successfully. Changes will be applied once approved.")
     } catch (error) {
-      console.error("Error saving flag definition:", error)
-      alert("Failed to save flag definition. Please try again.")
+      console.error("Error creating approval request:", error)
+      alert("Failed to create approval request. Please try again.")
     } finally {
       setIsSaving(false)
     }

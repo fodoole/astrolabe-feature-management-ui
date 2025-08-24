@@ -386,28 +386,47 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
   }
 }
 
-export async function saveFlagDefinition(
-  projectKey: string, 
-  flagKey: string, 
-  flagConfig: SDKFlagConfig
-): Promise<{ fileUrl: string }> {
-  const jsonBlob = new Blob([JSON.stringify(flagConfig, null, 2)], {
-    type: 'application/json'
-  })
-  
-  const formData = new FormData()
-  formData.append('file', jsonBlob, `${flagKey}.json`)
-  
-  const response = await fetch(`/api/proxy/feature-flags/${projectKey}/${flagKey}/definition`, {
+export async function createApprovalRequest(data: {
+  entityType: string
+  entityId: string
+  projectId: string
+  requestedBy: string
+  action: string
+  beforeSnapshot?: any
+  afterSnapshot?: any
+  comments?: string
+}): Promise<ApprovalRequest> {
+  const response = await apiRequest<ApprovalRequestDTO>('/approvals/', {
     method: 'POST',
-    body: formData
+    body: JSON.stringify({
+      entity_type: data.entityType,
+      entity_id: data.entityId,
+      project_id: data.projectId,
+      requested_by: data.requestedBy,
+      action: data.action,
+      before_snapshot: data.beforeSnapshot,
+      after_snapshot: data.afterSnapshot,
+      comments: data.comments
+    })
   })
   
-  if (!response.ok) {
-    throw new Error(`Failed to save flag definition: ${response.statusText}`)
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
   }
-  
-  return response.json()
 }
 
 export async function getFlagDefinition(
