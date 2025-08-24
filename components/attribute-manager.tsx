@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Plus, Database, Search, Type, Hash, ToggleLeft } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
+import { createGlobalAttribute } from "../lib/api-services"
 
 interface AttributeManagerProps {
   attributes: GlobalAttribute[]
+  onAttributesChange?: (attributes: GlobalAttribute[]) => void
 }
 
 const typeIcons = {
@@ -25,7 +27,7 @@ const typeColors = {
   boolean: "purple" as const,
 }
 
-export function AttributeManager({ attributes }: AttributeManagerProps) {
+export function AttributeManager({ attributes, onAttributesChange }: AttributeManagerProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<AttributeType | "all">("all")
   const [showNewAttributeModal, setShowNewAttributeModal] = useState(false)
@@ -38,14 +40,20 @@ export function AttributeManager({ attributes }: AttributeManagerProps) {
     return matchesSearch && matchesType
   })
 
-  const handleCreateAttribute = (attributeData: {
+  const handleCreateAttribute = async (attributeData: {
     name: string
     type: AttributeType
     description: string
     possibleValues?: string[]
   }) => {
-    console.log("Creating attribute:", attributeData)
-    // In a real app, this would make an API call
+    try {
+      const newAttribute = await createGlobalAttribute(attributeData)
+      if (onAttributesChange) {
+        onAttributesChange([...attributes, newAttribute])
+      }
+    } catch (error) {
+      console.error("Failed to create attribute:", error)
+    }
   }
 
   return (

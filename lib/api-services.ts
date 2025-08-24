@@ -5,7 +5,8 @@ import type {
   Project, 
   FeatureFlag, 
   GlobalAttribute, 
-  ApprovalRequest 
+  ApprovalRequest,
+  AttributeType
 } from '../types'
 
 export interface UserDTO {
@@ -293,6 +294,26 @@ export async function createTeam(data: { name: string }): Promise<Team> {
     id: response.id,
     name: response.name,
     members: []
+  }
+}
+
+export async function createGlobalAttribute(data: {
+  name: string
+  type: AttributeType
+  description?: string
+  possibleValues?: string[]
+}): Promise<GlobalAttribute> {
+  const response = await apiRequest<GlobalAttributeDTO>('/global-attributes/', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+  
+  return {
+    id: response.id,
+    name: response.name,
+    type: response.type as AttributeType,
+    description: response.description,
+    possibleValues: data.possibleValues
   }
 }
 
