@@ -255,13 +255,7 @@ export async function createProject(data: { name: string; key: string; descripti
   }
 }
 
-export async function createFeatureFlag(data: {
-  name: string
-  key: string
-  description?: string
-  dataType: string
-  projectKey: string
-}): Promise<FeatureFlag> {
+export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
   const response = await apiRequest<FeatureFlagDTO>('/feature-flags/', {
     method: 'POST',
     body: JSON.stringify({
