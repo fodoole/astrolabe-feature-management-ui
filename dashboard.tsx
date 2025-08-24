@@ -122,7 +122,7 @@ export default function FeatureFlagDashboard() {
       }
     }
     
-    if (activeTab === "approvals") {
+    if (activeTab === "approvals" || activeTab === "dashboard") {
       loadApprovals()
     }
   }, [activeTab, selectedProject])
@@ -245,6 +245,7 @@ export default function FeatureFlagDashboard() {
                     projects={projects}
                     flags={featureFlags}
                     attributes={globalAttributes}
+                    approvals={approvals}
                     selectedProject={selectedProject}
                     selectedFlag={selectedFlag}
                     onSelectFlag={setSelectedFlag}

@@ -6,6 +6,7 @@ import type {
   FeatureFlag, 
   GlobalAttribute, 
   ApprovalRequest,
+  ApprovalStatus,
   AttributeType
 } from '../types'
 import type { SDKFlagConfig } from './flag-config-transformer'
@@ -418,4 +419,9 @@ export async function getFlagDefinition(
     `/feature-flags/${projectKey}/${flagKey}/definition`
   )
   return response
+}
+
+export function getFlagApprovalStatus(flagId: string, approvals: ApprovalRequest[]): ApprovalStatus | null {
+  const flagApproval = approvals.find(approval => approval.flagId === flagId)
+  return flagApproval?.status || null
 }

@@ -6,24 +6,39 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
-import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users } from "lucide-react"
-import type { Project, FeatureFlag, GlobalAttribute, Environment } from "../types"
+import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users, CheckCircle, XCircle, Clock } from "lucide-react"
+import type { Project, FeatureFlag, GlobalAttribute, Environment, ApprovalRequest, ApprovalStatus } from "../types"
 import { NewFlagModal } from "./modals/new-flag-modal"
 import type { FlagDataType } from "../types"
+import { getFlagApprovalStatus } from "../lib/api-services"
 
 interface FlagDashboardProps {
   projects: Project[]
   flags: FeatureFlag[]
   attributes: GlobalAttribute[]
+  approvals: ApprovalRequest[]
   selectedProject: string | null
   selectedFlag: string | null
   onSelectFlag: (flagId: string) => void
+}
+
+const statusIcons = {
+  pending: Clock,
+  approved: CheckCircle,
+  rejected: XCircle,
+}
+
+const statusColors = {
+  pending: "default" as const,
+  approved: "default" as const,
+  rejected: "destructive" as const,
 }
 
 export function FlagDashboard({
   projects,
   flags,
   attributes,
+  approvals,
   selectedProject,
   selectedFlag,
   onSelectFlag,
@@ -187,6 +202,8 @@ export function FlagDashboard({
       <div className="space-y-4">
         {filteredFlags.map((flag) => {
           const envStatus = getEnvironmentStatus(flag, selectedEnvironment)
+          const approvalStatus = getFlagApprovalStatus(flag.id, approvals)
+          const StatusIcon = approvalStatus ? statusIcons[approvalStatus] : null
           const allEnvStatuses = {
             development: getEnvironmentStatus(flag, "development"),
             staging: getEnvironmentStatus(flag, "staging"),
@@ -206,6 +223,12 @@ export function FlagDashboard({
                       <Badge variant={envStatus.enabled ? "default" : "secondary"}>
                         {selectedEnvironment}: {envStatus.enabled ? "ON" : "OFF"}
                       </Badge>
+                      {approvalStatus && StatusIcon && (
+                        <Badge variant={statusColors[approvalStatus]} className="gap-1">
+                          <StatusIcon className="w-3 h-3" />
+                          {approvalStatus}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <code className="text-sm bg-muted px-2 py-1 rounded">{flag.key}</code>
