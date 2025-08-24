@@ -195,7 +195,7 @@ export default function FeatureFlagDashboard() {
                   />
                 )}
                 {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
-                {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} />}
+                {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
                     projects={projects}
