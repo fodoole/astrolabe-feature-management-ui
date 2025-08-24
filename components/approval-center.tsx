@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,7 @@ interface ApprovalCenterProps {
   flags: FeatureFlag[]
   currentUserId?: string
   onApprovalsChange?: (approvals: ApprovalRequest[]) => void
+  selectedProject?: string
 }
 
 const statusIcons = {
@@ -31,7 +32,7 @@ const statusColors = {
   rejected: "destructive" as const,
 }
 
-export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange }: ApprovalCenterProps) {
+export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject }: ApprovalCenterProps) {
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -46,9 +47,19 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
       .join("")
       .toUpperCase()
 
-  const filteredApprovals = approvals.filter(
-    (approval) => selectedStatus === "all" || approval.status === selectedStatus,
-  )
+  const filteredApprovals = useMemo(() => {
+    let filtered = approvals
+    
+    if (selectedProject) {
+      filtered = filtered.filter(approval => approval.projectId === selectedProject)
+    }
+    
+    if (selectedStatus !== "all") {
+      filtered = filtered.filter(approval => approval.status === selectedStatus)
+    }
+    
+    return filtered
+  }, [approvals, selectedProject, selectedStatus])
 
   const sortedApprovals = filteredApprovals.sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1
@@ -196,9 +207,22 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                         <div>
                           <span className="font-medium">Action:</span> {approval.changes.action || 'N/A'}
                         </div>
-                        <div className="bg-background p-2 rounded">
-                          <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue || approval.changes, null, 2)}</pre>
-                        </div>
+                        {approval.changes.oldValue && (
+                          <div>
+                            <span className="font-medium">Before:</span>
+                            <div className="bg-background p-2 rounded mt-1">
+                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.oldValue, null, 2)}</pre>
+                            </div>
+                          </div>
+                        )}
+                        {approval.changes.newValue && (
+                          <div>
+                            <span className="font-medium">After:</span>
+                            <div className="bg-background p-2 rounded mt-1">
+                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue, null, 2)}</pre>
+                            </div>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="text-muted-foreground">No change details available</div>

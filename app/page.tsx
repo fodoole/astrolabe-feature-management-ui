@@ -1,5 +1,10 @@
 import FeatureFlagDashboard from "../dashboard"
+import AuthWrapper from "@/components/auth-wrapper"
 
 export default function Page() {
-  return <FeatureFlagDashboard />
+  return (
+    <AuthWrapper>
+      <FeatureFlagDashboard />
+    </AuthWrapper>
+  )
 }

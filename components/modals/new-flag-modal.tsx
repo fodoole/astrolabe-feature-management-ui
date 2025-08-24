@@ -29,9 +29,10 @@ interface NewFlagModalProps {
     dataType: FlagDataType
     projectId: string
   }) => void
+  isCreating?: boolean
 }
 
-export function NewFlagModal({ open, onOpenChange, projectId, onCreateFlag }: NewFlagModalProps) {
+export function NewFlagModal({ open, onOpenChange, projectId, onCreateFlag, isCreating = false }: NewFlagModalProps) {
   const [name, setName] = useState("")
   const [key, setKey] = useState("")
   const [description, setDescription] = useState("")
@@ -129,10 +130,12 @@ export function NewFlagModal({ open, onOpenChange, projectId, onCreateFlag }: Ne
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isCreating}>
               Cancel
             </Button>
-            <Button type="submit">Create Flag</Button>
+            <Button type="submit" disabled={isCreating}>
+              {isCreating ? "Creating..." : "Create Flag"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

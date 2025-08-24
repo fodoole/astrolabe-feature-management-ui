@@ -80,7 +80,7 @@ export function RuleConditionEditor({
               <Label className="text-xs">Equals (remainder)</Label>
               <Input
                 type="number"
-                value={condition.value || ""}
+                value={String(condition.value || "")}
                 onChange={(e) => onUpdate("value", parseInt(e.target.value) || 0)}
                 placeholder="0"
                 className="text-sm"
@@ -114,7 +114,7 @@ export function RuleConditionEditor({
 
     return (
       <Input
-        value={condition.value || ""}
+        value={String(condition.value || "")}
         onChange={(e) => onUpdate("value", e.target.value)}
         placeholder={
           attribute?.type === "number" ? "123" :

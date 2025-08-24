@@ -10,6 +10,7 @@ import type {
   AttributeType,
   UserRole
 } from '../types'
+import type { SDKFlagConfig } from './flag-config-transformer'
 
 export interface UserDTO {
   id: string
@@ -209,11 +210,14 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<Gl
   }
 }
 
-export async function fetchApprovals(status?: string, limit = 100, offset = 0): Promise<ApprovalRequest[]> {
+export async function fetchApprovals(status?: string, projectId?: string, limit = 100, offset = 0): Promise<ApprovalRequest[]> {
   try {
     let endpoint = `/approvals/?limit=${limit}&offset=${offset}`
     if (status) {
       endpoint += `&status=${status}`
+    }
+    if (projectId) {
+      endpoint += `&project_id=${projectId}`
     }
     
     const response = await apiRequest<{approvalRequests: ApprovalRequestDTO[], totalCount: number}>(endpoint)
@@ -268,13 +272,7 @@ export async function createProject(data: { name: string; key: string; descripti
   }
 }
 
-export async function createFeatureFlag(data: {
-  name: string
-  key: string
-  description?: string
-  dataType: string
-  projectKey: string
-}): Promise<FeatureFlag> {
+export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
   const response = await apiRequest<FeatureFlagDTO>('/feature-flags/', {
     method: 'POST',
     body: JSON.stringify({
@@ -399,6 +397,59 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
       oldValue: response.beforeSnapshot
     }
   }
+}
+
+export async function createApprovalRequest(data: {
+  entityType: string
+  entityId: string
+  projectId: string
+  requestedBy: string
+  action: string
+  beforeSnapshot?: any
+  afterSnapshot?: any
+  comments?: string
+}): Promise<ApprovalRequest> {
+  const response = await apiRequest<ApprovalRequestDTO>('/approvals/', {
+    method: 'POST',
+    body: JSON.stringify({
+      entity_type: data.entityType,
+      entity_id: data.entityId,
+      project_id: data.projectId,
+      requested_by: data.requestedBy,
+      action: data.action,
+      before_snapshot: data.beforeSnapshot,
+      after_snapshot: data.afterSnapshot,
+      comments: data.comments
+    })
+  })
+  
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
+  }
+}
+
+export async function getFlagDefinition(
+  projectKey: string, 
+  flagKey: string
+): Promise<SDKFlagConfig> {
+  const response = await apiRequest<SDKFlagConfig>(
+    `/feature-flags/${projectKey}/${flagKey}/definition`
+  )
+  return response
 }
 
 export async function updateTeamMembers(
