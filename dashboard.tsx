@@ -96,19 +96,19 @@ export default function FeatureFlagDashboard() {
     loadData()
   }, [])
 
-  useEffect(() => {
-    const loadFeatureFlags = async () => {
-      if (selectedProject) {
-        try {
-          const project = projects.find(p => p.id === selectedProject)
-          const flagsData = await fetchFeatureFlags(project?.key)
-          setFeatureFlags(flagsData)
-        } catch (err) {
-          console.error('Failed to load feature flags:', err)
-        }
+  const loadFeatureFlags = async () => {
+    if (selectedProject) {
+      try {
+        const project = projects.find(p => p.id === selectedProject)
+        const flagsData = await fetchFeatureFlags(project?.key)
+        setFeatureFlags(flagsData)
+      } catch (err) {
+        console.error('Failed to load feature flags:', err)
       }
     }
-    
+  }
+
+  useEffect(() => {
     loadFeatureFlags()
   }, [selectedProject, projects])
 
@@ -216,6 +216,7 @@ export default function FeatureFlagDashboard() {
                     selectedProject={selectedProject}
                     selectedFlag={selectedFlag}
                     onSelectFlag={setSelectedFlag}
+                    onFlagsChange={loadFeatureFlags}
                   />
                 )}
                 {activeTab === "changelog" && (

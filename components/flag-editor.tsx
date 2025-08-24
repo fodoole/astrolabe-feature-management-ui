@@ -33,6 +33,7 @@ interface FlagEditorProps {
   selectedProject: string | null
   selectedFlag: string | null
   onSelectFlag: (flagId: string) => void
+  onFlagsChange: () => Promise<void>
 }
 
 export function FlagEditor({
@@ -42,6 +43,7 @@ export function FlagEditor({
   selectedProject,
   selectedFlag,
   onSelectFlag,
+  onFlagsChange,
 }: FlagEditorProps) {
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>("development")
   const [showNewFlagModal, setShowNewFlagModal] = useState(false)
@@ -51,6 +53,8 @@ export function FlagEditor({
   const [editingRule, setEditingRule] = useState<Rule | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isCreatingFlag, setIsCreatingFlag] = useState(false)
+  const [createFlagMessage, setCreateFlagMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => {
     setHasUnsavedChanges(false)
@@ -70,23 +74,38 @@ export function FlagEditor({
     projectId: string
   }) => {
     try {
+      setIsCreatingFlag(true)
+      setCreateFlagMessage(null)
+      
       const project = projects.find(p => p.id === flagData.projectId)
       if (!project) throw new Error("Project not found")
-        const flagPayload = {
-          key:flagData.key,
-          name: flagData.name,
-          description: flagData.description,
-          data_type: flagData.dataType,
-          project_id: flagData.projectId, 
-          created_by:  "00000000-0000-0000-0000-000000000000",
-          project_key: project.key,
-        };
+      
+      const flagPayload = {
+        key: flagData.key,
+        name: flagData.name,
+        description: flagData.description,
+        data_type: flagData.dataType,
+        project_id: flagData.projectId, 
+        created_by: "00000000-0000-0000-0000-000000000000",
+        project_key: project.key,
+      };
+      
       await createFeatureFlag(flagPayload)
+      
+      // Refresh the flags list
+      await onFlagsChange()
+      
+      setCreateFlagMessage({ type: 'success', text: `Flag "${flagData.name}" created successfully!` })
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setCreateFlagMessage(null), 3000)
       
       console.log("Flag created successfully:", flagData)
     } catch (error) {
       console.error("Error creating flag:", error)
-      alert("Failed to create flag. Please try again.")
+      setCreateFlagMessage({ type: 'error', text: 'Failed to create flag. Please try again.' })
+    } finally {
+      setIsCreatingFlag(false)
     }
   }
 
@@ -158,11 +177,21 @@ export function FlagEditor({
             {selectedProjectData?.name} • {projectFlags.length} flags
           </p>
         </div>
-        <Button onClick={() => setShowNewFlagModal(true)} disabled={!selectedProject}>
+        <Button onClick={() => setShowNewFlagModal(true)} disabled={!selectedProject || isCreatingFlag}>
           <Plus className="w-4 h-4 mr-2" />
-          New Flag
+          {isCreatingFlag ? "Creating..." : "New Flag"}
         </Button>
       </div>
+
+      {/* Success/Error Message */}
+      {createFlagMessage && (
+        <Alert className={createFlagMessage.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+          <AlertCircle className={`h-4 w-4 ${createFlagMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`} />
+          <AlertDescription className={createFlagMessage.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+            {createFlagMessage.text}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Flag List */}
@@ -363,6 +392,7 @@ export function FlagEditor({
           onOpenChange={setShowNewFlagModal}
           projectId={selectedProject}
           onCreateFlag={handleCreateFlag}
+          isCreating={isCreatingFlag}
         />
       )}
 
