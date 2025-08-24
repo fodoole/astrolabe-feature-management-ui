@@ -69,21 +69,18 @@ export default function FeatureFlagDashboard() {
           usersData,
           teamsData,
           projectsData,
-          attributesData,
-          approvalsData
+          attributesData
         ] = await Promise.all([
           fetchUsers(),
           fetchTeams(),
           fetchProjects(),
-          fetchGlobalAttributes(),
-          fetchApprovals()
+          fetchGlobalAttributes()
         ])
         
         setUsers(usersData)
         setTeams(teamsData)
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
-        setApprovals(approvalsData)
         
         if (projectsData.length > 0 && !selectedProject) {
           setSelectedProject(projectsData[0].id)
@@ -114,6 +111,21 @@ export default function FeatureFlagDashboard() {
     
     loadFeatureFlags()
   }, [selectedProject, projects])
+
+  useEffect(() => {
+    const loadApprovals = async () => {
+      try {
+        const approvalsData = await fetchApprovals(undefined, selectedProject || undefined)
+        setApprovals(approvalsData)
+      } catch (err) {
+        console.error('Failed to load approvals:', err)
+      }
+    }
+    
+    if (activeTab === "approvals") {
+      loadApprovals()
+    }
+  }, [activeTab, selectedProject])
 
   return (
     <SidebarProvider defaultOpen>
@@ -222,6 +234,7 @@ export default function FeatureFlagDashboard() {
                     flags={featureFlags}
                     currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
+                    selectedProject={selectedProject || undefined}
                   />
                 )}
 
