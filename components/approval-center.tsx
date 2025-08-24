@@ -196,9 +196,22 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                         <div>
                           <span className="font-medium">Action:</span> {approval.changes.action || 'N/A'}
                         </div>
-                        <div className="bg-background p-2 rounded">
-                          <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue || approval.changes, null, 2)}</pre>
-                        </div>
+                        {approval.changes.oldValue && (
+                          <div>
+                            <span className="font-medium">Before:</span>
+                            <div className="bg-background p-2 rounded mt-1">
+                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.oldValue, null, 2)}</pre>
+                            </div>
+                          </div>
+                        )}
+                        {approval.changes.newValue && (
+                          <div>
+                            <span className="font-medium">After:</span>
+                            <div className="bg-background p-2 rounded mt-1">
+                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue, null, 2)}</pre>
+                            </div>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="text-muted-foreground">No change details available</div>
