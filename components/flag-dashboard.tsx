@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users } from "lucide-react"
-import type { Project, FeatureFlag, GlobalAttribute, Environment } from "../types"
+import type { Project, FeatureFlag, GlobalAttribute, Environment, ApprovalRequest, ApprovalStatus } from "../types"
 import { NewFlagModal } from "./modals/new-flag-modal"
 import type { FlagDataType } from "../types"
 
@@ -14,6 +14,7 @@ interface FlagDashboardProps {
   projects: Project[]
   flags: FeatureFlag[]
   attributes: GlobalAttribute[]
+  approvals: ApprovalRequest[]
   selectedProject: string | null
   selectedFlag: string | null
   onSelectFlag: (flagId: string) => void
@@ -23,6 +24,7 @@ export function FlagDashboard({
   projects,
   flags,
   attributes,
+  approvals,
   selectedProject,
   selectedFlag,
   onSelectFlag,
@@ -46,6 +48,26 @@ export function FlagDashboard({
       enabled: envConfig?.enabled || false,
       hasRules: (envConfig?.rules?.length || 0) > 0,
       hasTrafficSplit: (envConfig?.trafficSplits?.length || 0) > 0,
+    }
+  }
+
+  const getApprovalStatus = (flagId: string) => {
+    const flagApprovals = approvals.filter(approval => approval.flagId === flagId)
+    if (flagApprovals.length === 0) return null
+    
+    const latestApproval = flagApprovals.sort((a, b) => 
+      b.requestedAt.getTime() - a.requestedAt.getTime()
+    )[0]
+    
+    return latestApproval.status
+  }
+
+  const getApprovalStatusColor = (status: ApprovalStatus) => {
+    switch (status) {
+      case "pending": return "default"
+      case "approved": return "default" 
+      case "rejected": return "destructive"
+      default: return "outline"
     }
   }
 
@@ -186,6 +208,14 @@ export function FlagDashboard({
                       <Badge variant="outline" className="text-xs">
                         {flag.dataType}
                       </Badge>
+                      {(() => {
+                        const approvalStatus = getApprovalStatus(flag.id)
+                        return approvalStatus ? (
+                          <Badge variant={getApprovalStatusColor(approvalStatus)} className="text-xs">
+                            {approvalStatus}
+                          </Badge>
+                        ) : null
+                      })()}
                     </div>
                     <div className="flex items-center gap-2">
                       <code className="text-sm bg-muted px-2 py-1 rounded">{flag.key}</code>
