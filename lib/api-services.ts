@@ -131,9 +131,12 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
   }
 }
 
-export async function fetchTeamsByProject(projectId: string): Promise<Team[]> {
+export async function fetchTeamsByProject(projectId: string, includeMembers = false): Promise<Team[]> {
   try {
-    const response = await apiRequest<PaginatedResponse<TeamDTO>>(`/projects/${projectId}/teams`)
+    const url = includeMembers 
+      ? `/projects/${projectId}/teams?include=members`
+      : `/projects/${projectId}/teams`
+    const response = await apiRequest<PaginatedResponse<TeamDTO | TeamWithMembersDTO>>(url)
     console.log('fetchTeamsByProject response:', response)
 
     if (!response || !response.items) {
@@ -144,7 +147,10 @@ export async function fetchTeamsByProject(projectId: string): Promise<Team[]> {
     return response.items.map(team => ({
       id: team.id,
       name: team.name,
-      members: []
+      members: 'members' in team ? team.members.map(member => ({
+        userId: member.user_id,
+        role: member.role_name.toLowerCase() as UserRole
+      })) : []
     }))
   } catch (error) {
     console.error('Error fetching teams by project:', error)

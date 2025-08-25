@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { toast } from 'sonner'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -48,12 +49,12 @@ export function TrafficSplitBuilder({ splits, onSplitsChange, flagDataType }: Tr
     }
 
     if (newSplit.percentage <= 0 || newSplit.percentage > remainingPercentage) {
-      alert(`Percentage must be between 1 and ${remainingPercentage}`)
+      toast.error(`Percentage must be between 1 and ${remainingPercentage}`)
       return
     }
 
     if (!newSplit.value.trim()) {
-      alert("Value is required")
+      toast.error("Value is required")
       return
     }
 
@@ -67,7 +68,7 @@ export function TrafficSplitBuilder({ splits, onSplitsChange, flagDataType }: Tr
         parsedValue = JSON.parse(newSplit.value)
       }
     } catch (error) {
-      alert("Invalid value format")
+      toast.error("Invalid value format")
       return
     }
 

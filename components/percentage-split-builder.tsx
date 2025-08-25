@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { toast } from 'sonner'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -37,7 +38,7 @@ export function PercentageSplitBuilder({ splits, onSplitsChange, flagDataType }:
           parsedValue = JSON.parse(newSplitValue)
         }
       } catch (error) {
-        alert("Invalid value format")
+        toast.error("Invalid value format")
         return
       }
 
