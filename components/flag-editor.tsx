@@ -27,6 +27,8 @@ import { FlagPreviewModal } from "./modals/flag-preview-modal"
 import { EditRuleModal } from "./modals/edit-rule-modal"
 import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
 import { createApprovalRequest, createFeatureFlag, getFlagDefinition } from "../lib/api-services"
+import { handleApiError, showSuccessToast } from "../lib/toast-utils"
+import { toast } from 'sonner'
 
 interface FlagEditorProps {
   projects: Project[]
@@ -153,9 +155,10 @@ export function FlagEditor({
       // Clear success message after 3 seconds
       setTimeout(() => setCreateFlagMessage(null), 3000)
       
+      showSuccessToast('Feature flag created successfully!')
       console.log("Flag created successfully:", flagData)
     } catch (error) {
-      console.error("Error creating flag:", error)
+      handleApiError(error, 'Failed to create flag')
       setCreateFlagMessage({ type: 'error', text: 'Failed to create flag. Please try again.' })
     } finally {
       setIsCreatingFlag(false)
@@ -347,7 +350,7 @@ export function FlagEditor({
       } else if (currentFlag.dataType === 'number') {
         parsedValue = Number(tempDefaultValue)
         if (isNaN(parsedValue)) {
-          alert('Invalid number format')
+          toast.error('Invalid number format')
           return
         }
       } else if (currentFlag.dataType === 'json') {
@@ -358,7 +361,7 @@ export function FlagEditor({
       handleUpdateDefaultValue(parsedValue)
       setIsEditingDefaultValue(false)
     } catch (error) {
-      alert('Invalid value format')
+      toast.error('Invalid value format')
     }
   }
 
@@ -422,10 +425,9 @@ export function FlagEditor({
       
       setHasUnsavedChanges(false)
       console.log("Approval request created successfully")
-      alert("Approval request created successfully. Changes will be applied once approved.")
+      showSuccessToast("Approval request created successfully. Changes will be applied once approved.")
     } catch (error) {
-      console.error("Error creating approval request:", error)
-      alert("Failed to create approval request. Please try again.")
+      handleApiError(error, 'Failed to create approval request')
     } finally {
       setIsSaving(false)
     }

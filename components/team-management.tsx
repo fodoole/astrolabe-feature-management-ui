@@ -8,6 +8,7 @@ import type { Team, User } from "../types"
 import { NewTeamModal } from "./modals/new-team-modal"
 import { ManageTeamModal } from "./modals/manage-team-modal"
 import { createTeam, updateTeam, updateTeamMembers } from "../lib/api-services"
+import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
 interface TeamManagementProps {
   teams: Team[]
@@ -29,9 +30,9 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
       const updatedTeams = [...teams, newTeam]
       onTeamsChange?.(updatedTeams)
       setShowNewTeamModal(false)
+      showSuccessToast('Team created successfully!')
     } catch (error) {
-      console.error("Failed to create team:", error)
-      alert("Failed to create team. Please try again.")
+      handleApiError(error, 'Failed to create team')
     } finally {
       setIsCreating(false)
     }
@@ -71,9 +72,9 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
       }
       
       setShowManageModal(false)
+      showSuccessToast('Team updated successfully!')
     } catch (error) {
-      console.error("Failed to update team:", error)
-      alert("Failed to update team. Please try again.")
+      handleApiError(error, 'Failed to update team')
     } finally {
       setIsUpdating(false)
     }
