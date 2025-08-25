@@ -288,7 +288,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     onProjectsChange={setProjects}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={selectedProject ? projectTeams : teams} users={users} onTeamsChange={selectedProject ? setProjectTeams : setTeams} />}
+                {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
