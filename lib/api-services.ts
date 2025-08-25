@@ -8,7 +8,8 @@ import type {
   GlobalAttribute, 
   ApprovalRequest,
   AttributeType,
-  UserRole
+  UserRole,
+  Role
 } from '../types'
 import type { SDKFlagConfig } from './flag-config-transformer'
 
@@ -474,6 +475,19 @@ export async function getFlagDefinition(
     `/feature-flags/${projectKey}/${flagKey}/definition`
   )
   return response
+}
+
+export interface RoleDTO {
+  id: string
+  name: string
+}
+
+export async function fetchRoles(): Promise<Role[]> {
+  const response = await apiRequest<RoleDTO[]>('/roles/')
+  return response.map(role => ({
+    id: role.id,
+    name: role.name
+  }))
 }
 
 export async function updateTeamMembers(

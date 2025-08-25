@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,14 +14,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
 import { Plus, Trash2, Crown, Edit, Eye } from "lucide-react"
-import type { Team, User, UserRole } from "../../types"
+import type { Team, User, UserRole, Role, TeamMember } from "../../types"
+import { fetchRoles } from "../../lib/api-services"
 
 interface ManageTeamModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   team: Team | null
   users: User[]
-  onUpdateTeam: (teamId: string, updates: Partial<Team>) => void
+  onUpdateTeam: (teamId: string, updates: Partial<Team> | { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }) => void
 }
 
 const roleIcons = {
@@ -39,6 +40,27 @@ const roleColors = {
 export function ManageTeamModal({ open, onOpenChange, team, users, onUpdateTeam }: ManageTeamModalProps) {
   const [selectedUserId, setSelectedUserId] = useState("")
   const [selectedRole, setSelectedRole] = useState<UserRole>("viewer")
+  const [roles, setRoles] = useState<Role[]>([])
+  const [originalMembers, setOriginalMembers] = useState<TeamMember[]>([])
+  const [currentMembers, setCurrentMembers] = useState<TeamMember[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (open && team) {
+      setOriginalMembers([...team.members])
+      setCurrentMembers([...team.members])
+      
+      const loadRoles = async () => {
+        try {
+          const fetchedRoles = await fetchRoles()
+          setRoles(fetchedRoles)
+        } catch (error) {
+          console.error('Failed to fetch roles:', error)
+        }
+      }
+      loadRoles()
+    }
+  }, [open, team])
 
   if (!team) return null
 
@@ -52,28 +74,58 @@ export function ManageTeamModal({ open, onOpenChange, team, users, onUpdateTeam 
 
   const getUserById = (userId: string) => users.find((user) => user.id === userId)
 
-  const availableUsers = users.filter((user) => !team.members.some((member) => member.userId === user.id))
+  const availableUsers = users.filter((user) => !currentMembers.some((member: TeamMember) => member.userId === user.id))
+
+  const getRoleIdByName = (roleName: UserRole): string => {
+    const role = roles.find(r => r.name.toLowerCase() === roleName.toLowerCase())
+    return role?.id || ""
+  }
 
   const handleAddMember = () => {
     if (selectedUserId && selectedRole) {
-      const updatedMembers = [...team.members, { userId: selectedUserId, role: selectedRole }]
-      onUpdateTeam(team.id, { members: updatedMembers })
+      const updatedMembers = [...currentMembers, { userId: selectedUserId, role: selectedRole }]
+      setCurrentMembers(updatedMembers)
       setSelectedUserId("")
       setSelectedRole("viewer")
     }
   }
 
   const handleRemoveMember = (userId: string) => {
-    const updatedMembers = team.members.filter((member) => member.userId !== userId)
-    onUpdateTeam(team.id, { members: updatedMembers })
+    const updatedMembers = currentMembers.filter((member: TeamMember) => member.userId !== userId)
+    setCurrentMembers(updatedMembers)
   }
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
-    const updatedMembers = team.members.map((member) =>
+    const updatedMembers = currentMembers.map((member: TeamMember) =>
       member.userId === userId ? { ...member, role: newRole } : member,
     )
-    onUpdateTeam(team.id, { members: updatedMembers })
+    setCurrentMembers(updatedMembers)
   }
+
+  const handleDone = async () => {
+    setIsLoading(true)
+    try {
+      const currentMemberIds = new Set(currentMembers.map((m: TeamMember) => m.userId))
+      
+      const upserts = currentMembers.map((member: TeamMember) => ({
+        user_id: member.userId,
+        role_id: getRoleIdByName(member.role)
+      })).filter(upsert => upsert.role_id)
+      
+      const removes = originalMembers
+        .filter((member: TeamMember) => !currentMemberIds.has(member.userId))
+        .map((member: TeamMember) => member.userId)
+      
+      await onUpdateTeam(team.id, { upserts, removes })
+      onOpenChange(false)
+    } catch (error) {
+      console.error('Failed to update team members:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const hasChanges = JSON.stringify(originalMembers) !== JSON.stringify(currentMembers)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -88,7 +140,7 @@ export function ManageTeamModal({ open, onOpenChange, team, users, onUpdateTeam 
           <div>
             <Label className="text-sm font-medium">Current Members</Label>
             <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
-              {team.members.map((member) => {
+              {currentMembers.map((member) => {
                 const user = getUserById(member.userId)
                 const RoleIcon = roleIcons[member.role]
 
@@ -163,7 +215,12 @@ export function ManageTeamModal({ open, onOpenChange, team, users, onUpdateTeam 
         </div>
 
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)}>Done</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleDone} disabled={!hasChanges || isLoading}>
+            {isLoading ? "Saving..." : "Done"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
