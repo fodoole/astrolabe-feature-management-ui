@@ -71,8 +71,8 @@ function friendlyMessage(status: number, formatted: any, raw: any) {
   return { message: 'Request failed.' }
 }
 
-async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH', params: { path: string[] }) {
-  const p  = await params
+async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'PUT', params: { path: string[] }) {
+  const p = await params
   const t0 = performance.now()
   const reqId = crypto.randomUUID()
 
@@ -133,8 +133,8 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH', par
     typeof payload === 'string'
       ? payload.slice(0, 800)
       : payload && typeof payload === 'object'
-      ? JSON.stringify(payload).slice(0, 800)
-      : payload
+        ? JSON.stringify(payload).slice(0, 800)
+        : payload
 
   console.info(
     '[proxy:response]',
@@ -195,6 +195,11 @@ export async function POST(request: NextRequest, ctx: { params: { path: string[]
   return proxy(request, 'POST', ctx.params)
 }
 
+
 export async function PATCH(request: NextRequest, ctx: { params: { path: string[] } }) {
   return proxy(request, 'PATCH', ctx.params)
+}
+
+export async function PUT(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, 'PUT', ctx.params)
 }
