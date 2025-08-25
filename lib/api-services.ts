@@ -7,6 +7,7 @@ import type {
   FeatureFlag, 
   GlobalAttribute, 
   ApprovalRequest,
+  ApprovalStatus,
   AttributeType,
   UserRole,
   Role
@@ -519,6 +520,11 @@ export async function getFlagDefinition(
     `/feature-flags/${projectKey}/${flagKey}/definition`
   )
   return response
+}
+
+export function getFlagApprovalStatus(flagId: string, approvals: ApprovalRequest[]): ApprovalStatus | null {
+  const flagApproval = approvals.find(approval => approval.flagId === flagId)
+  return flagApproval?.status || null
 }
 
 export interface RoleDTO {

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users } from "lucide-react"
+import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users, CheckCircle, XCircle, Clock } from "lucide-react"
 import type { Project, FeatureFlag, GlobalAttribute, Environment, ApprovalRequest, ApprovalStatus } from "../types"
 import { NewFlagModal } from "./modals/new-flag-modal"
 import type { FlagDataType } from "../types"
@@ -192,6 +192,7 @@ export function FlagDashboard({
       {/* Feature Flags List */}
       <div className="space-y-4">
         {filteredFlags.map((flag) => {
+          const approvalStatus = getApprovalStatus(flag.id)
           const allEnvStatuses = {
             development: getEnvironmentStatus(flag, "development"),
             staging: getEnvironmentStatus(flag, "staging"),
@@ -208,14 +209,14 @@ export function FlagDashboard({
                       <Badge variant="outline" className="text-xs">
                         {flag.dataType}
                       </Badge>
-                      {(() => {
-                        const approvalStatus = getApprovalStatus(flag.id)
-                        return approvalStatus ? (
-                          <Badge variant={getApprovalStatusColor(approvalStatus)} className="text-xs">
-                            {approvalStatus}
-                          </Badge>
-                        ) : null
-                      })()}
+                      {approvalStatus && (
+                        <Badge variant={getApprovalStatusColor(approvalStatus)} className="gap-1">
+                          {approvalStatus === "pending" && <Clock className="w-3 h-3" />}
+                          {approvalStatus === "approved" && <CheckCircle className="w-3 h-3" />}
+                          {approvalStatus === "rejected" && <XCircle className="w-3 h-3" />}
+                          {approvalStatus}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <code className="text-sm bg-muted px-2 py-1 rounded">{flag.key}</code>
