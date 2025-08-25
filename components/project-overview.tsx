@@ -7,6 +7,7 @@ import { Plus, Users, Flag, Activity } from "lucide-react"
 import { useState } from "react"
 import { NewProjectModal } from "./modals/new-project-modal"
 import { createProject } from "../lib/api-services"
+import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 import type { Project, Team, User, FeatureFlag } from "../types"
 
 interface ProjectOverviewProps {
@@ -54,8 +55,7 @@ export function ProjectOverview({
       const newProject = await createProject({
         name: projectData.name,
         key: projectData.key,
-        description: projectData.description,
-        teamIds: projectData.teamIds
+        description: projectData.description
       })
       
       if (onProjectsChange) {
@@ -63,8 +63,9 @@ export function ProjectOverview({
       }
       
       setShowNewProjectModal(false)
+      showSuccessToast('Project created successfully!')
     } catch (error) {
-      console.error("Failed to create project:", error)
+      handleApiError(error, 'Failed to create project')
     }
   }
 

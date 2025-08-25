@@ -9,6 +9,7 @@ import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye } from 'lucide-re
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { ReviewApprovalModal } from "./modals/review-approval-modal"
 import { approveRequest, rejectRequest } from "../lib/api-services"
+import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
 interface ApprovalCenterProps {
   approvals: ApprovalRequest[]
@@ -84,9 +85,9 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
       )
       onApprovalsChange?.(updatedApprovals)
       setShowReviewModal(false)
+      showSuccessToast('Request approved successfully!')
     } catch (error) {
-      console.error("Failed to approve request:", error)
-      alert("Failed to approve request. Please try again.")
+      handleApiError(error, 'Failed to approve request')
     }
   }
 
@@ -98,9 +99,9 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
       )
       onApprovalsChange?.(updatedApprovals)
       setShowReviewModal(false)
+      showSuccessToast('Request rejected successfully!')
     } catch (error) {
-      console.error("Failed to reject request:", error)
-      alert("Failed to reject request. Please try again.")
+      handleApiError(error, 'Failed to reject request')
     }
   }
 
