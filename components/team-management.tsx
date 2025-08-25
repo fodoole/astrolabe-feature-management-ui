@@ -37,10 +37,16 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
     }
   }
 
-  const handleUpdateTeam = async (teamId: string, updates: Partial<Team>) => {
+  const handleUpdateTeam = async (teamId: string, updates: Partial<Team> | { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }) => {
     setIsUpdating(true)
     try {
-      if (updates.name && !updates.members) {
+      if ('upserts' in updates || 'removes' in updates) {
+        const updatedTeam = await updateTeamMembers(teamId, updates as { upserts: Array<{user_id: string, role_id: string}>, removes: string[] })
+        const updatedTeams = teams.map(team => 
+          team.id === teamId ? { ...team, members: updatedTeam.members } : team
+        )
+        onTeamsChange?.(updatedTeams)
+      } else if (updates.name && !updates.members) {
         const updatedTeam = await updateTeam(teamId, { name: updates.name })
         const updatedTeams = teams.map(team => 
           team.id === teamId ? { ...team, name: updatedTeam.name } : team
