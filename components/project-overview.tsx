@@ -54,7 +54,8 @@ export function ProjectOverview({
       const newProject = await createProject({
         name: projectData.name,
         key: projectData.key,
-        description: projectData.description
+        description: projectData.description,
+        teamIds: projectData.teamIds
       })
       
       if (onProjectsChange) {
