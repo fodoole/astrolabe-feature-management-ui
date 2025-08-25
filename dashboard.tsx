@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Flag, Users, Settings, FileText, CheckCircle, Database, BookOpen } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import { ProjectOverview } from "./components/project-overview"
 import { TeamManagement } from "./components/team-management"
 import { AttributeManager } from "./components/attribute-manager"
@@ -36,17 +38,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AstrolabeHeader } from "./components/astrolabe-header"
 
 const navigationItems = [
-  { id: "dashboard", label: "Dashboard", icon: Flag },
-  { id: "get-started", label: "Get Started", icon: BookOpen },
-  { id: "projects", label: "Projects", icon: Flag },
-  { id: "teams", label: "Teams", icon: Users },
-  { id: "attributes", label: "Attributes", icon: Database },
-  { id: "flags", label: "Flag Editor", icon: Settings },
-  { id: "changelog", label: "Change Log", icon: FileText },
-  { id: "approvals", label: "Approvals", icon: CheckCircle },
+  { id: "dashboard", label: "Dashboard", icon: Flag, href: "/" },
+  { id: "get-started", label: "Get Started", icon: BookOpen, href: "/get-started" },
+  { id: "projects", label: "Projects", icon: Flag, href: "/projects" },
+  { id: "teams", label: "Teams", icon: Users, href: "/teams" },
+  { id: "attributes", label: "Attributes", icon: Database, href: "/attributes" },
+  { id: "flags", label: "Flag Editor", icon: Settings, href: "/flags" },
+  { id: "changelog", label: "Change Log", icon: FileText, href: "/changelog" },
+  { id: "approvals", label: "Approvals", icon: CheckCircle, href: "/approvals" },
 ]
 
 export default function FeatureFlagDashboard() {
+  const router = useRouter()
+  const pathname = usePathname()
   const [activeTab, setActiveTab] = useState("get-started")
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
@@ -157,9 +161,11 @@ export default function FeatureFlagDashboard() {
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton onClick={() => setActiveTab(item.id)} isActive={activeTab === item.id}>
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.label}</span>
+                  <SidebarMenuButton asChild isActive={pathname === item.href || (pathname === "/" && item.id === "dashboard")}>
+                    <Link href={item.href}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -237,6 +243,7 @@ export default function FeatureFlagDashboard() {
                     selectedFlag={selectedFlag}
                     onSelectFlag={setSelectedFlag}
                     onFlagsChange={loadFeatureFlags}
+                    approvals={approvals}
                   />
                 )}
                 {activeTab === "changelog" && (

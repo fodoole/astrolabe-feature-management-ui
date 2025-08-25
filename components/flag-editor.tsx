@@ -19,6 +19,7 @@ import type {
   RuleCondition,
   LogicalOperator,
   Rule,
+  ApprovalRequest,
 } from "../types"
 import { RuleBuilder } from "./rule-builder"
 import { NewFlagModal } from "./modals/new-flag-modal"
@@ -28,6 +29,8 @@ import { EditRuleModal } from "./modals/edit-rule-modal"
 import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
 import { createApprovalRequest, createFeatureFlag, getFlagDefinition } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
+import { hasPendingApproval, getPendingApproval } from "../lib/approval-utils"
+import { PendingApprovalBanner } from "./pending-approval-banner"
 import { toast } from 'sonner'
 
 interface FlagEditorProps {
@@ -38,6 +41,7 @@ interface FlagEditorProps {
   selectedFlag: string | null
   onSelectFlag: (flagId: string) => void
   onFlagsChange: () => Promise<void>
+  approvals?: ApprovalRequest[]
 }
 
 export function FlagEditor({
@@ -48,6 +52,7 @@ export function FlagEditor({
   selectedFlag,
   onSelectFlag,
   onFlagsChange,
+  approvals = [],
 }: FlagEditorProps) {
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>("development")
   const [showNewFlagModal, setShowNewFlagModal] = useState(false)
@@ -425,7 +430,7 @@ export function FlagEditor({
       
       setHasUnsavedChanges(false)
       console.log("Approval request created successfully")
-      showSuccessToast("Approval request created successfully. Changes will be applied once approved.")
+      showSuccessToast(`Approval request created successfully. View at /approvals/${currentFlag.id}. Changes will be applied once approved.`)
     } catch (error) {
       handleApiError(error, 'Failed to create approval request')
     } finally {
@@ -444,6 +449,8 @@ export function FlagEditor({
   }
 
   const selectedProjectData = projects.find((p) => p.id === selectedProject)
+  const currentFlagHasPendingApproval = currentFlag ? hasPendingApproval(currentFlag.id, approvals) : false
+  const pendingApproval = currentFlag ? getPendingApproval(currentFlag.id, approvals) : null
 
   return (
     <div className="space-y-6">
@@ -515,7 +522,10 @@ export function FlagEditor({
         <div className="lg:col-span-2">
           {currentFlag ? (
             <div className="space-y-4">
-              {hasUnsavedChanges && (
+              {pendingApproval && (
+                <PendingApprovalBanner approval={pendingApproval} />
+              )}
+              {hasUnsavedChanges && !currentFlagHasPendingApproval && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
@@ -562,6 +572,7 @@ export function FlagEditor({
                           <Switch 
                             checked={currentEnvironmentConfig?.enabled || false} 
                             onCheckedChange={handleToggleEnvironment}
+                            disabled={currentFlagHasPendingApproval}
                           />
                         </div>
                       </div>
@@ -571,7 +582,7 @@ export function FlagEditor({
                         <div>
                           <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-medium">Default Value</label>
-                            {!isEditingDefaultValue && (
+                            {!isEditingDefaultValue && !currentFlagHasPendingApproval && (
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -587,7 +598,7 @@ export function FlagEditor({
                           {isEditingDefaultValue ? (
                             <div className="space-y-3">
                               {currentFlag?.dataType === 'boolean' ? (
-                                <Select value={tempDefaultValue} onValueChange={setTempDefaultValue}>
+                                <Select value={tempDefaultValue} onValueChange={setTempDefaultValue} disabled={currentFlagHasPendingApproval}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
@@ -603,6 +614,7 @@ export function FlagEditor({
                                   onChange={(e) => setTempDefaultValue(e.target.value)}
                                   className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
                                   placeholder="Enter a number"
+                                  disabled={currentFlagHasPendingApproval}
                                 />
                               ) : currentFlag?.dataType === 'json' ? (
                                 <Textarea
@@ -610,6 +622,7 @@ export function FlagEditor({
                                   onChange={(e) => setTempDefaultValue(e.target.value)}
                                   className="font-mono text-sm min-h-[100px]"
                                   placeholder="Enter valid JSON"
+                                  disabled={currentFlagHasPendingApproval}
                                 />
                               ) : (
                                 <input
@@ -618,11 +631,12 @@ export function FlagEditor({
                                   onChange={(e) => setTempDefaultValue(e.target.value)}
                                   className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
                                   placeholder="Enter a string value"
+                                  disabled={currentFlagHasPendingApproval}
                                 />
                               )}
                               
                               <div className="flex gap-2">
-                                <Button size="sm" onClick={handleSaveDefaultValue}>
+                                <Button size="sm" onClick={handleSaveDefaultValue} disabled={currentFlagHasPendingApproval}>
                                   Save
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
@@ -659,7 +673,7 @@ export function FlagEditor({
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">Targeting Rules</CardTitle>
-                        <Button size="sm" onClick={() => setShowNewRuleModal(true)}>
+                        <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={currentFlagHasPendingApproval}>
                           <Plus className="w-4 h-4 mr-2" />
                           Add Rule
                         </Button>
@@ -678,7 +692,7 @@ export function FlagEditor({
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)}>
+                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={currentFlagHasPendingApproval}>
                                     <Settings className="w-4 h-4" />
                                   </Button>
                                 </div>
