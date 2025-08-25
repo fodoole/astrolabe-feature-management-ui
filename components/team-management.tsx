@@ -7,7 +7,8 @@ import { Plus, Users, Settings } from "lucide-react"
 import type { Team, User } from "../types"
 import { NewTeamModal } from "./modals/new-team-modal"
 import { ManageTeamModal } from "./modals/manage-team-modal"
-import { createTeam, updateTeam } from "../lib/api-services"
+import { createTeam, updateTeam, updateTeamMembers } from "../lib/api-services"
+import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
 interface TeamManagementProps {
   teams: Team[]
@@ -29,26 +30,57 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
       const updatedTeams = [...teams, newTeam]
       onTeamsChange?.(updatedTeams)
       setShowNewTeamModal(false)
+      showSuccessToast('Team created successfully!')
     } catch (error) {
-      console.error("Failed to create team:", error)
-      alert("Failed to create team. Please try again.")
+      handleApiError(error, 'Failed to create team')
     } finally {
       setIsCreating(false)
     }
   }
 
-  const handleUpdateTeam = async (teamId: string, updates: Partial<Team>) => {
+  const handleUpdateTeam = async (teamId: string, updates: Partial<Team> | { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }) => {
     setIsUpdating(true)
     try {
-      const updatedTeam = await updateTeam(teamId, { name: updates.name })
-      const updatedTeams = teams.map(team => 
-        team.id === teamId ? { ...team, ...updates } : team
-      )
-      onTeamsChange?.(updatedTeams)
+      if ('upserts' in updates || 'removes' in updates) {
+        const updatedTeam = await updateTeamMembers(teamId, updates as { upserts: Array<{user_id: string, role_id: string}>, removes: string[] })
+        const updatedTeams = teams.map(team => 
+          team.id === teamId ? { ...team, members: updatedTeam.members } : team
+        )
+        onTeamsChange?.(updatedTeams)
+      } else if (updates.name && !updates.members) {
+        const updatedTeam = await updateTeam(teamId, { name: updates.name })
+        const updatedTeams = teams.map(team => 
+          team.id === teamId ? { ...team, name: updatedTeam.name } : team
+        )
+        onTeamsChange?.(updatedTeams)
+      }
+      else if (updates.members) {
+        const currentTeam = teams.find(team => team.id === teamId)
+        if (!currentTeam) throw new Error("Team not found")
+        
+        const currentMemberIds = new Set(currentTeam.members.map(m => m.userId))
+        const newMemberIds = new Set(updates.members.map(m => m.userId))
+        
+        const upserts = updates.members.map(member => ({
+          user_id: member.userId,
+          role_id: member.role
+        }))
+        
+        const removes = currentTeam.members
+          .filter(member => !newMemberIds.has(member.userId))
+          .map(member => member.userId)
+        
+        const updatedTeam = await updateTeamMembers(teamId, { upserts, removes })
+        const updatedTeams = teams.map(team => 
+          team.id === teamId ? { ...team, members: updatedTeam.members } : team
+        )
+        onTeamsChange?.(updatedTeams)
+      }
+      
       setShowManageModal(false)
+      showSuccessToast('Team updated successfully!')
     } catch (error) {
-      console.error("Failed to update team:", error)
-      alert("Failed to update team. Please try again.")
+      handleApiError(error, 'Failed to update team')
     } finally {
       setIsUpdating(false)
     }

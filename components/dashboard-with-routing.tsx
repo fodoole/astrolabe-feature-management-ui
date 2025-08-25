@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   SidebarProvider,
   Sidebar,
@@ -14,14 +15,14 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Flag, Users, Settings, FileText, CheckCircle, Database, BookOpen } from 'lucide-react'
-import { ProjectOverview } from "./components/project-overview"
-import { TeamManagement } from "./components/team-management"
-import { AttributeManager } from "./components/attribute-manager"
-import { FlagEditor } from "./components/flag-editor"
-import { ChangeLog } from "./components/change-log"
-import { ApprovalCenter } from "./components/approval-center"
-import { FlagDashboard } from "./components/flag-dashboard"
-import { GetStarted } from "./components/get-started"
+import { ProjectOverview } from "./project-overview"
+import { TeamManagement } from "./team-management"
+import { AttributeManager } from "./attribute-manager"
+import { FlagEditor } from "./flag-editor"
+import { ChangeLog } from "./change-log"
+import { ApprovalCenter } from "./approval-center"
+import { FlagDashboard } from "./flag-dashboard"
+import { GetStarted } from "./get-started"
 import { 
   fetchUsers,
   fetchTeams,
@@ -30,10 +31,10 @@ import {
   fetchFeatureFlags,
   fetchGlobalAttributes,
   fetchApprovals
-} from "./lib/api-services"
-import type { User, Team, Project, FeatureFlag, GlobalAttribute, ApprovalRequest } from "./types"
+} from "../lib/api-services"
+import type { User, Team, Project, FeatureFlag, GlobalAttribute, ApprovalRequest } from "../types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AstrolabeHeader } from "./components/astrolabe-header"
+import { AstrolabeHeader } from "./astrolabe-header"
 
 const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: Flag },
@@ -46,10 +47,21 @@ const navigationItems = [
   { id: "approvals", label: "Approvals", icon: CheckCircle },
 ]
 
-export default function FeatureFlagDashboard() {
-  const [activeTab, setActiveTab] = useState("get-started")
-  const [selectedProject, setSelectedProject] = useState<string | null>(null)
-  const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
+interface DashboardWithRoutingProps {
+  searchParams: {
+    tab?: string
+    project?: string
+    flag?: string
+  }
+}
+
+export default function DashboardWithRouting({ searchParams }: DashboardWithRoutingProps) {
+  const router = useRouter()
+  const currentSearchParams = useSearchParams()
+  
+  const [activeTab, setActiveTab] = useState(searchParams.tab || "get-started")
+  const [selectedProject, setSelectedProject] = useState<string | null>(searchParams.project || null)
+  const [selectedFlag, setSelectedFlag] = useState<string | null>(searchParams.flag || null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -60,6 +72,53 @@ export default function FeatureFlagDashboard() {
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([])
   const [globalAttributes, setGlobalAttributes] = useState<GlobalAttribute[]>([])
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([])
+
+  // Update URL when tab or project changes
+  const updateURL = (newTab?: string, newProject?: string, newFlag?: string) => {
+    const params = new URLSearchParams(currentSearchParams.toString())
+    
+    if (newTab !== undefined) {
+      if (newTab) {
+        params.set('tab', newTab)
+      } else {
+        params.delete('tab')
+      }
+    }
+    
+    if (newProject !== undefined) {
+      if (newProject) {
+        params.set('project', newProject)
+      } else {
+        params.delete('project')
+      }
+    }
+    
+    if (newFlag !== undefined) {
+      if (newFlag) {
+        params.set('flag', newFlag)
+      } else {
+        params.delete('flag')
+      }
+    }
+    
+    const newURL = params.toString() ? `/?${params.toString()}` : '/'
+    router.push(newURL, { scroll: false })
+  }
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId)
+    updateURL(tabId, selectedProject, selectedFlag)
+  }
+
+  const handleProjectChange = (projectId: string) => {
+    setSelectedProject(projectId)
+    updateURL(activeTab, projectId, selectedFlag)
+  }
+
+  const handleFlagChange = (flagId: string | null) => {
+    setSelectedFlag(flagId)
+    updateURL(activeTab, selectedProject, flagId)
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -84,8 +143,11 @@ export default function FeatureFlagDashboard() {
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
         
+        // Set default project if none selected and projects exist
         if (projectsData.length > 0 && !selectedProject) {
-          setSelectedProject(projectsData[0].id)
+          const defaultProject = projectsData[0].id
+          setSelectedProject(defaultProject)
+          updateURL(activeTab, defaultProject, selectedFlag)
         }
       } catch (err) {
         console.error('Failed to load data:', err)
@@ -157,7 +219,7 @@ export default function FeatureFlagDashboard() {
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton onClick={() => setActiveTab(item.id)} isActive={activeTab === item.id}>
+                  <SidebarMenuButton onClick={() => handleTabChange(item.id)} isActive={activeTab === item.id}>
                     <item.icon className="w-4 h-4" />
                     <span>{item.label}</span>
                   </SidebarMenuButton>
@@ -171,10 +233,10 @@ export default function FeatureFlagDashboard() {
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
-              {activeTab !== "get-started" && (
+              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "teams" && (
                 <>
                   <div className="h-4 w-px bg-border" />
-                  <Select value={selectedProject || ""} onValueChange={setSelectedProject}>
+                  <Select value={selectedProject || ""} onValueChange={handleProjectChange}>
                     <SelectTrigger className="w-[250px]">
                       <SelectValue placeholder="Select a project" />
                     </SelectTrigger>
@@ -190,7 +252,7 @@ export default function FeatureFlagDashboard() {
               )}
             </div>
             <div className="text-sm text-muted-foreground">
-              {activeTab !== "get-started" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
+              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "teams" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
             </div>
           </header>
 
@@ -221,12 +283,12 @@ export default function FeatureFlagDashboard() {
                     teams={teams}
                     users={users}
                     flags={featureFlags}
-                    onSelectProject={setSelectedProject}
-                    onNavigateToFlags={() => setActiveTab("flags")}
+                    onSelectProject={handleProjectChange}
+                    onNavigateToFlags={() => handleTabChange("flags")}
                     onProjectsChange={setProjects}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={selectedProject ? projectTeams : teams} users={users} onTeamsChange={selectedProject ? setProjectTeams : setTeams} />}
+                {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
@@ -235,7 +297,7 @@ export default function FeatureFlagDashboard() {
                     attributes={globalAttributes}
                     selectedProject={selectedProject}
                     selectedFlag={selectedFlag}
-                    onSelectFlag={setSelectedFlag}
+                    onSelectFlag={handleFlagChange}
                     onFlagsChange={loadFeatureFlags}
                   />
                 )}
@@ -267,7 +329,7 @@ export default function FeatureFlagDashboard() {
                     approvals={approvals}
                     selectedProject={selectedProject}
                     selectedFlag={selectedFlag}
-                    onSelectFlag={setSelectedFlag}
+                    onSelectFlag={handleFlagChange}
                   />
                 )}
               </>

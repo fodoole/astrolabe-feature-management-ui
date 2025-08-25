@@ -36,6 +36,12 @@ export interface Team {
   members: TeamMember[]
 }
 
+export interface TeamWithMembers {
+  id: string
+  name: string
+  members: TeamMember[]
+}
+
 export interface Project {
   id: string
   key: string
@@ -123,6 +129,27 @@ export interface ApprovalRequest {
   reviewedAt?: Date
   comments?: string
   changes: any
+  project?: {
+    id: string
+    name: string
+  }
+  flag?: {
+    id: string
+    name: string
+  }
+  requestedByUser?: {
+    id: string
+    name: string
+  }
+  reviewedByUser?: {
+    id: string
+    name: string
+  }
 }
 
 export type ApprovalStatus = "pending" | "approved" | "rejected"
+
+export interface Role {
+  id: string
+  name: string
+}

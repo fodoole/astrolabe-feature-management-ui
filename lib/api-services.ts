@@ -2,12 +2,15 @@ import { apiRequest, PaginatedResponse } from './api-client'
 import type { 
   User, 
   Team, 
+  TeamWithMembers,
   Project, 
   FeatureFlag, 
   GlobalAttribute, 
   ApprovalRequest,
   ApprovalStatus,
-  AttributeType
+  AttributeType,
+  UserRole,
+  Role
 } from '../types'
 import type { SDKFlagConfig } from './flag-config-transformer'
 
@@ -25,6 +28,17 @@ export interface TeamDTO {
   name: string
   createdAt: string
   updatedAt: string
+}
+
+export interface TeamMemberDTO {
+  user_id: string
+  role_name: string
+}
+
+export interface TeamWithMembersDTO {
+  id: string
+  name: string
+  members: TeamMemberDTO[]
 }
 
 export interface ProjectDTO {
@@ -114,6 +128,33 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
     }))
   } catch (error) {
     console.error('Error fetching teams:', error)
+    return []
+  }
+}
+
+export async function fetchTeamsByProject(projectId: string, includeMembers = false): Promise<Team[]> {
+  try {
+    const url = includeMembers 
+      ? `/projects/${projectId}/teams?include=members`
+      : `/projects/${projectId}/teams`
+    const response = await apiRequest<PaginatedResponse<TeamDTO | TeamWithMembersDTO>>(url)
+    console.log('fetchTeamsByProject response:', response)
+    
+    if (!response || !response.items) {
+      console.warn('Unexpected response structure for project teams:', response)
+      return []
+    }
+    
+    return response.items.map(team => ({
+      id: team.id,
+      name: team.name,
+      members: 'members' in team ? team.members.map(member => ({
+        userId: member.user_id,
+        role: member.role_name.toLowerCase() as UserRole
+      })) : []
+    }))
+  } catch (error) {
+    console.error('Error fetching teams by project:', error)
     return []
   }
 }
@@ -243,10 +284,51 @@ export async function fetchApprovals(status?: string, projectId?: string, limit 
   }
 }
 
-export async function createProject(data: { name: string; key: string; description?: string }): Promise<Project> {
+export async function getApprovalById(approvalId: string): Promise<ApprovalRequest> {
+  const response = await apiRequest<any>(`/approvals/${approvalId}`)
+  console.log('resp: ', response)
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entity_id : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production', // Default since not provided in API
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    },
+    project: {
+      id: response.projectId,
+      name: response.projectName
+    },
+    flag: response.entityType === 'feature_flag' ? {
+      id: response.entityId,
+      name: response.entityName
+    } : undefined,
+    requestedByUser: {
+      id: response.requestedBy,
+      name: response.requestedByName
+    },
+    reviewedByUser: response.reviewedBy ? {
+      id: response.reviewedBy,
+      name: response.reviewedByName || 'Unknown Reviewer'
+    } : undefined
+  }
+}
+
+export async function createProject(data: { name: string; key: string; description?: string; teamIds?: string[] }): Promise<Project> {
   const response = await apiRequest<ProjectDTO>('/projects/', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify({
+      ...data,
+      team_ids: data.teamIds || []
+    })
   })
   
   return {
@@ -387,28 +469,47 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
   }
 }
 
-export async function saveFlagDefinition(
-  projectKey: string, 
-  flagKey: string, 
-  flagConfig: SDKFlagConfig
-): Promise<{ fileUrl: string }> {
-  const jsonBlob = new Blob([JSON.stringify(flagConfig, null, 2)], {
-    type: 'application/json'
-  })
-  
-  const formData = new FormData()
-  formData.append('file', jsonBlob, `${flagKey}.json`)
-  
-  const response = await fetch(`/api/proxy/feature-flags/${projectKey}/${flagKey}/definition`, {
+export async function createApprovalRequest(data: {
+  entityType: string
+  entityId: string
+  projectId: string
+  requestedBy: string
+  action: string
+  beforeSnapshot?: any
+  afterSnapshot?: any
+  comments?: string
+}): Promise<ApprovalRequest> {
+  const response = await apiRequest<ApprovalRequestDTO>('/approvals/', {
     method: 'POST',
-    body: formData
+    body: JSON.stringify({
+      entity_type: data.entityType,
+      entity_id: data.entityId,
+      project_id: data.projectId,
+      requested_by: data.requestedBy,
+      action: data.action,
+      before_snapshot: data.beforeSnapshot,
+      after_snapshot: data.afterSnapshot,
+      comments: data.comments
+    })
   })
   
-  if (!response.ok) {
-    throw new Error(`Failed to save flag definition: ${response.statusText}`)
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
   }
-  
-  return response.json()
 }
 
 export async function getFlagDefinition(
@@ -424,4 +525,36 @@ export async function getFlagDefinition(
 export function getFlagApprovalStatus(flagId: string, approvals: ApprovalRequest[]): ApprovalStatus | null {
   const flagApproval = approvals.find(approval => approval.flagId === flagId)
   return flagApproval?.status || null
+}
+
+export interface RoleDTO {
+  id: string
+  name: string
+}
+
+export async function fetchRoles(): Promise<Role[]> {
+  const response = await apiRequest<RoleDTO[]>('/roles/')
+  return response.map(role => ({
+    id: role.id,
+    name: role.name
+  }))
+}
+
+export async function updateTeamMembers(
+  teamId: string,
+  payload: { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }
+): Promise<TeamWithMembers> {
+  const response = await apiRequest<TeamWithMembersDTO>(`/teams/${teamId}/members`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
+  
+  return {
+    id: response.id,
+    name: response.name,
+    members: response.members.map(member => ({
+      userId: member.user_id,
+      role: member.role_name.toLowerCase() as UserRole
+    }))
+  }
 }

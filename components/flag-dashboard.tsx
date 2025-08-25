@@ -4,13 +4,11 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users, CheckCircle, XCircle, Clock } from "lucide-react"
 import type { Project, FeatureFlag, GlobalAttribute, Environment, ApprovalRequest, ApprovalStatus } from "../types"
 import { NewFlagModal } from "./modals/new-flag-modal"
 import type { FlagDataType } from "../types"
-import { getFlagApprovalStatus } from "../lib/api-services"
 
 interface FlagDashboardProps {
   projects: Project[]
@@ -20,18 +18,6 @@ interface FlagDashboardProps {
   selectedProject: string | null
   selectedFlag: string | null
   onSelectFlag: (flagId: string) => void
-}
-
-const statusIcons = {
-  pending: Clock,
-  approved: CheckCircle,
-  rejected: XCircle,
-}
-
-const statusColors = {
-  pending: "default" as const,
-  approved: "default" as const,
-  rejected: "destructive" as const,
 }
 
 export function FlagDashboard({
@@ -44,7 +30,6 @@ export function FlagDashboard({
   onSelectFlag,
 }: FlagDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>("production")
   const [showNewFlagModal, setShowNewFlagModal] = useState(false)
 
   const selectedProjectData = selectedProject ? projects.find((p) => p.id === selectedProject) : null
@@ -63,6 +48,26 @@ export function FlagDashboard({
       enabled: envConfig?.enabled || false,
       hasRules: (envConfig?.rules?.length || 0) > 0,
       hasTrafficSplit: (envConfig?.trafficSplits?.length || 0) > 0,
+    }
+  }
+
+  const getApprovalStatus = (flagId: string) => {
+    const flagApprovals = approvals.filter(approval => approval.flagId === flagId)
+    if (flagApprovals.length === 0) return null
+    
+    const latestApproval = flagApprovals.sort((a, b) => 
+      b.requestedAt.getTime() - a.requestedAt.getTime()
+    )[0]
+    
+    return latestApproval.status
+  }
+
+  const getApprovalStatusColor = (status: ApprovalStatus) => {
+    switch (status) {
+      case "pending": return "default"
+      case "approved": return "default" 
+      case "rejected": return "destructive"
+      default: return "outline"
     }
   }
 
@@ -173,37 +178,21 @@ export function FlagDashboard({
         </Card>
       </div>
 
-      {/* Search and Environment Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search flags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          {(["development", "staging", "production"] as Environment[]).map((env) => (
-            <Button
-              key={env}
-              variant={selectedEnvironment === env ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedEnvironment(env)}
-            >
-              {env.charAt(0).toUpperCase() + env.slice(1)}
-            </Button>
-          ))}
-        </div>
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search flags..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10"
+        />
       </div>
 
       {/* Feature Flags List */}
       <div className="space-y-4">
         {filteredFlags.map((flag) => {
-          const envStatus = getEnvironmentStatus(flag, selectedEnvironment)
-          const approvalStatus = getFlagApprovalStatus(flag.id, approvals)
-          const StatusIcon = approvalStatus ? statusIcons[approvalStatus] : null
+          const approvalStatus = getApprovalStatus(flag.id)
           const allEnvStatuses = {
             development: getEnvironmentStatus(flag, "development"),
             staging: getEnvironmentStatus(flag, "staging"),
@@ -220,43 +209,24 @@ export function FlagDashboard({
                       <Badge variant="outline" className="text-xs">
                         {flag.dataType}
                       </Badge>
-                      <Badge variant={envStatus.enabled ? "default" : "secondary"}>
-                        {selectedEnvironment}: {envStatus.enabled ? "ON" : "OFF"}
-                      </Badge>
-                      {approvalStatus && StatusIcon && (
-                        <Badge variant={statusColors[approvalStatus]} className="gap-1">
-                          <StatusIcon className="w-3 h-3" />
+                      {approvalStatus && (
+                        <Badge variant={getApprovalStatusColor(approvalStatus)} className="gap-1">
+                          {approvalStatus === "pending" && <Clock className="w-3 h-3" />}
+                          {approvalStatus === "approved" && <CheckCircle className="w-3 h-3" />}
+                          {approvalStatus === "rejected" && <XCircle className="w-3 h-3" />}
                           {approvalStatus}
                         </Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <code className="text-sm bg-muted px-2 py-1 rounded">{flag.key}</code>
-                      {envStatus.hasRules && (
-                        <Badge variant="outline" className="text-xs gap-1">
-                          <Users className="w-3 h-3" />
-                          Rules
-                        </Badge>
-                      )}
-                      {envStatus.hasTrafficSplit && (
-                        <Badge variant="outline" className="text-xs gap-1">
-                          <TrendingUp className="w-3 h-3" />
-                          Split
-                        </Badge>
-                      )}
                     </div>
                     {flag.description && <CardDescription>{flag.description}</CardDescription>}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Enabled</span>
-                      <Switch checked={envStatus.enabled} />
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => onSelectFlag(flag.id)}>
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => onSelectFlag(flag.id)}>
+                    <Settings className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardHeader>
 
@@ -277,48 +247,14 @@ export function FlagDashboard({
                     ))}
                   </div>
 
-                  {/* Current Environment Details */}
+                  {/* Flag Details */}
                   <div className="border-t pt-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium">
-                        {selectedEnvironment.charAt(0).toUpperCase() + selectedEnvironment.slice(1)} Configuration
-                      </h4>
+                      <h4 className="text-sm font-medium">Flag Configuration</h4>
                       <Button variant="ghost" size="sm" onClick={() => onSelectFlag(flag.id)}>
                         <Eye className="w-4 h-4 mr-1" />
                         View Details
                       </Button>
-                    </div>
-
-                    <div className="text-sm space-y-1">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Default Value:</span>
-                        <code className="text-xs bg-muted px-1 rounded">
-                          {JSON.stringify(
-                            flag.environments.find((e) => e.environment === selectedEnvironment)?.defaultValue,
-                          )}
-                        </code>
-                      </div>
-
-                      {envStatus.hasRules && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Targeting Rules:</span>
-                          <span className="text-xs">
-                            {flag.environments.find((e) => e.environment === selectedEnvironment)?.rules?.length || 0}{" "}
-                            active
-                          </span>
-                        </div>
-                      )}
-
-                      {envStatus.hasTrafficSplit && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Traffic Split:</span>
-                          <span className="text-xs">
-                            {flag.environments.find((e) => e.environment === selectedEnvironment)?.trafficSplits
-                              ?.length || 0}{" "}
-                            variants
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
