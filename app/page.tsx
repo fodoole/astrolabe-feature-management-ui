@@ -1,10 +1,21 @@
-import FeatureFlagDashboard from "../dashboard"
+import { Suspense } from "react"
 import AuthWrapper from "@/components/auth-wrapper"
+import DashboardWithRouting from "@/components/dashboard-with-routing"
 
-export default function Page() {
+interface PageProps {
+  searchParams: {
+    tab?: string
+    project?: string
+    flag?: string
+  }
+}
+
+export default function Page({ searchParams }: PageProps) {
   return (
     <AuthWrapper>
-      <FeatureFlagDashboard />
+      <Suspense fallback={<div>Loading...</div>}>
+        <DashboardWithRouting searchParams={searchParams} />
+      </Suspense>
     </AuthWrapper>
   )
 }
