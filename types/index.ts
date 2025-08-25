@@ -129,6 +129,22 @@ export interface ApprovalRequest {
   reviewedAt?: Date
   comments?: string
   changes: any
+  project?: {
+    id: string
+    name: string
+  }
+  flag?: {
+    id: string
+    name: string
+  }
+  requestedByUser?: {
+    id: string
+    name: string
+  }
+  reviewedByUser?: {
+    id: string
+    name: string
+  }
 }
 
 export type ApprovalStatus = "pending" | "approved" | "rejected"

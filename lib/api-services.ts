@@ -283,6 +283,44 @@ export async function fetchApprovals(status?: string, projectId?: string, limit 
   }
 }
 
+export async function getApprovalById(approvalId: string): Promise<ApprovalRequest> {
+  const response = await apiRequest<any>(`/approvals/${approvalId}`)
+  console.log('resp: ', response)
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entity_id : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production', // Default since not provided in API
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    },
+    project: {
+      id: response.projectId,
+      name: response.projectName
+    },
+    flag: response.entityType === 'feature_flag' ? {
+      id: response.entityId,
+      name: response.entityName
+    } : undefined,
+    requestedByUser: {
+      id: response.requestedBy,
+      name: response.requestedByName
+    },
+    reviewedByUser: response.reviewedBy ? {
+      id: response.reviewedBy,
+      name: response.reviewedByName || 'Unknown Reviewer'
+    } : undefined
+  }
+}
+
 export async function createProject(data: { name: string; key: string; description?: string; teamIds?: string[] }): Promise<Project> {
   const response = await apiRequest<ProjectDTO>('/projects/', {
     method: 'POST',

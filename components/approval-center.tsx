@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye, ExternalLink } from 'lucide-react'
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
-import { ReviewApprovalModal } from "./modals/review-approval-modal"
 import { approveRequest, rejectRequest } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
@@ -34,6 +34,7 @@ const statusColors = {
 }
 
 export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject }: ApprovalCenterProps) {
+  const router = useRouter()
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -69,12 +70,8 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
   })
 
   const handleReview = (approval: ApprovalRequest) => {
-    console.log("handleReview called with approval:", approval)
-    console.log("project:", getProjectById(approval.projectId))
-    console.log("user:", getUserById(approval.requestedBy))
-    console.log("flag:", getFlagById(approval.flagId))
-    setReviewingApproval(approval)
-    setShowReviewModal(true)
+    // Navigate to the dedicated request page instead of opening modal
+    router.push(`/requests/${approval.id}`)
   }
 
   const handleApprove = async (approvalId: string, comment: string) => {
@@ -169,15 +166,23 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                     <div className="text-right text-sm text-muted-foreground">
                       {approval.requestedAt.toLocaleDateString()}
                     </div>
-                    {approval.status === "pending" && (
-                      <Button 
-                        onClick={() => handleReview(approval)}
-                        className="gap-2"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Review
-                      </Button>
-                    )}
+                    <Button 
+                      onClick={() => handleReview(approval)}
+                      variant={approval.status === "pending" ? "default" : "outline"}
+                      className="gap-2"
+                    >
+                      {approval.status === "pending" ? (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Review
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="w-4 h-4" />
+                          View
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -271,17 +276,6 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
           </div>
         )}
       </div>
-
-      <ReviewApprovalModal
-        open={showReviewModal}
-        onOpenChange={setShowReviewModal}
-        approval={reviewingApproval}
-        project={reviewingApproval ? getProjectById(reviewingApproval.projectId) : null}
-        user={reviewingApproval ? getUserById(reviewingApproval.requestedBy) : null}
-        flag={reviewingApproval ? getFlagById(reviewingApproval.flagId) : null}
-        onApprove={handleApprove}
-        onReject={handleReject}
-      />
     </div>
   )
 }
