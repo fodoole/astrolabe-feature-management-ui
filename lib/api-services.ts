@@ -276,10 +276,13 @@ export async function fetchApprovals(status?: string, projectId?: string, limit 
   }
 }
 
-export async function createProject(data: { name: string; key: string; description?: string }): Promise<Project> {
+export async function createProject(data: { name: string; key: string; description?: string; teamIds?: string[] }): Promise<Project> {
   const response = await apiRequest<ProjectDTO>('/projects/', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify({
+      ...data,
+      team_ids: data.teamIds || []
+    })
   })
   
   return {
