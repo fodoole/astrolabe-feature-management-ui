@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Plus, Flag, Search, Eye, Settings, Activity, TrendingUp, Users } from "lucide-react"
 import type { Project, FeatureFlag, GlobalAttribute, Environment, ApprovalRequest, ApprovalStatus } from "../types"
+import { getApprovalStatus, getApprovalStatusColor } from "../lib/approval-utils"
 import { NewFlagModal } from "./modals/new-flag-modal"
 import type { FlagDataType } from "../types"
 
@@ -51,25 +52,6 @@ export function FlagDashboard({
     }
   }
 
-  const getApprovalStatus = (flagId: string) => {
-    const flagApprovals = approvals.filter(approval => approval.flagId === flagId)
-    if (flagApprovals.length === 0) return null
-    
-    const latestApproval = flagApprovals.sort((a, b) => 
-      b.requestedAt.getTime() - a.requestedAt.getTime()
-    )[0]
-    
-    return latestApproval.status
-  }
-
-  const getApprovalStatusColor = (status: ApprovalStatus) => {
-    switch (status) {
-      case "pending": return "default"
-      case "approved": return "default" 
-      case "rejected": return "destructive"
-      default: return "outline"
-    }
-  }
 
   const getProjectStats = () => {
     const totalFlags = projectFlags.length
@@ -209,7 +191,7 @@ export function FlagDashboard({
                         {flag.dataType}
                       </Badge>
                       {(() => {
-                        const approvalStatus = getApprovalStatus(flag.id)
+                        const approvalStatus = getApprovalStatus(flag.id, approvals)
                         return approvalStatus ? (
                           <Badge variant={getApprovalStatusColor(approvalStatus)} className="text-xs">
                             {approvalStatus}

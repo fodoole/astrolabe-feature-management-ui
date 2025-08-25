@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect } from 'react'
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { ReviewApprovalModal } from "./modals/review-approval-modal"
 import { approveRequest, rejectRequest } from "../lib/api-services"
@@ -34,6 +36,10 @@ const statusColors = {
 }
 
 export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject }: ApprovalCenterProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const approvalId = searchParams.get('id')
+  
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -68,13 +74,26 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
     return b.requestedAt.getTime() - a.requestedAt.getTime()
   })
 
+  useEffect(() => {
+    if (approvalId && approvals.length > 0) {
+      const approval = approvals.find(a => a.id === approvalId)
+      if (approval) {
+        setReviewingApproval(approval)
+        setShowReviewModal(true)
+      }
+    }
+  }, [approvalId, approvals])
+
   const handleReview = (approval: ApprovalRequest) => {
     console.log("handleReview called with approval:", approval)
     console.log("project:", getProjectById(approval.projectId))
     console.log("user:", getUserById(approval.requestedBy))
     console.log("flag:", getFlagById(approval.flagId))
-    setReviewingApproval(approval)
-    setShowReviewModal(true)
+    router.push(`/approvals/${approval.id}`)
+  }
+
+  const handleCardClick = (approval: ApprovalRequest) => {
+    router.push(`/approvals/${approval.id}`)
   }
 
   const handleApprove = async (approvalId: string, comment: string) => {
@@ -85,6 +104,7 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
       )
       onApprovalsChange?.(updatedApprovals)
       setShowReviewModal(false)
+      router.push('/approvals')
       showSuccessToast('Request approved successfully!')
     } catch (error) {
       handleApiError(error, 'Failed to approve request')
@@ -99,6 +119,7 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
       )
       onApprovalsChange?.(updatedApprovals)
       setShowReviewModal(false)
+      router.push('/approvals')
       showSuccessToast('Request rejected successfully!')
     } catch (error) {
       handleApiError(error, 'Failed to reject request')
@@ -149,7 +170,13 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
           const StatusIcon = statusIcons[approval.status]
 
           return (
-            <Card key={approval.id} className={approval.status === "pending" ? "border-orange-200" : ""}>
+            <Card 
+              key={approval.id} 
+              className={`cursor-pointer transition-colors hover:bg-muted/50 ${
+                approval.status === "pending" ? "border-orange-200" : ""
+              } ${approvalId === approval.id ? "ring-2 ring-primary" : ""}`}
+              onClick={() => handleCardClick(approval)}
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-2">
