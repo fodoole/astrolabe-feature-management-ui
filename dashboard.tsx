@@ -118,7 +118,7 @@ export default function FeatureFlagDashboard() {
     const loadProjectTeams = async () => {
       if (selectedProject) {
         try {
-          const projectTeamsData = await fetchTeamsByProject(selectedProject)
+          const projectTeamsData = await fetchTeamsByProject(selectedProject, true)
           setProjectTeams(projectTeamsData)
         } catch (err) {
           console.error('Failed to load project teams:', err)
