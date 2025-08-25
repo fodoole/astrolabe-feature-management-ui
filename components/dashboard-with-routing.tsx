@@ -233,7 +233,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
-              {activeTab !== "get-started" && (
+              {activeTab !== "get-started" && activeTab !== "projects" && (
                 <>
                   <div className="h-4 w-px bg-border" />
                   <Select value={selectedProject || ""} onValueChange={handleProjectChange}>
@@ -252,7 +252,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
               )}
             </div>
             <div className="text-sm text-muted-foreground">
-              {activeTab !== "get-started" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
+              {activeTab !== "get-started" && activeTab !== "projects" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
             </div>
           </header>
 
