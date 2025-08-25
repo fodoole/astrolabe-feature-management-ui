@@ -1,10 +1,10 @@
 import { apiRequest, PaginatedResponse } from './api-client'
-import type { 
-  User, 
-  Team, 
-  Project, 
-  FeatureFlag, 
-  GlobalAttribute, 
+import type {
+  User,
+  Team,
+  Project,
+  FeatureFlag,
+  GlobalAttribute,
   ApprovalRequest,
   AttributeType
 } from '../types'
@@ -45,6 +45,7 @@ export interface FeatureFlagDTO {
   createdAt: string
   updatedAt: string
   createdBy: string
+  status?: string
 }
 
 export interface GlobalAttributeDTO {
@@ -78,12 +79,12 @@ export async function fetchUsers(limit = 100, offset = 0): Promise<User[]> {
   try {
     const response = await apiRequest<UserDTO[]>(`/users/?limit=${limit}&offset=${offset}`)
     console.log('fetchUsers response:', response)
-    
+
     if (!Array.isArray(response)) {
       console.warn('Unexpected response structure for users:', response)
       return []
     }
-    
+
     return response.map(user => ({
       id: user.id,
       name: user.name,
@@ -100,12 +101,12 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
   try {
     const response = await apiRequest<PaginatedResponse<TeamDTO>>(`/teams/?limit=${limit}&offset=${offset}`)
     console.log('fetchTeams response:', response)
-    
+
     if (!response || !response.items) {
       console.warn('Unexpected response structure for teams:', response)
       return []
     }
-    
+
     return response.items.map(team => ({
       id: team.id,
       name: team.name,
@@ -119,14 +120,14 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
 
 export async function fetchProjects(limit = 100, offset = 0): Promise<Project[]> {
   try {
-    const response = await apiRequest<{projects: ProjectDTO[], totalCount: number}>(`/projects/?limit=${limit}&offset=${offset}`)
+    const response = await apiRequest<{ projects: ProjectDTO[], totalCount: number }>(`/projects/?limit=${limit}&offset=${offset}`)
     console.log('fetchProjects response:', response)
-    
+
     if (!response || !response.projects) {
       console.warn('Unexpected response structure for projects:', response)
       return []
     }
-    
+
     return response.projects.map(project => ({
       id: project.id,
       key: project.key,
@@ -148,15 +149,15 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
     if (projectKey) {
       endpoint += `&project_key=${projectKey}`
     }
-    
-    const response = await apiRequest<{featureFlags: FeatureFlagDTO[], totalCount: number}>(endpoint)
+
+    const response = await apiRequest<{ featureFlags: FeatureFlagDTO[], totalCount: number }>(endpoint)
     console.log('fetchFeatureFlags response:', response)
-    
+
     if (!response || !response.featureFlags) {
       console.warn('Unexpected response structure for feature flags:', response)
       return []
     }
-    
+
     return response.featureFlags.map(flag => ({
       id: flag.id,
       key: flag.key,
@@ -167,7 +168,8 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
       environments: [],
       createdAt: new Date(flag.createdAt),
       updatedAt: new Date(flag.updatedAt),
-      createdBy: flag.createdBy
+      createdBy: flag.createdBy,
+      status: flag.status
     }))
   } catch (error) {
     console.error('Error fetching feature flags:', error)
@@ -177,14 +179,14 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
 
 export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<GlobalAttribute[]> {
   try {
-    const response = await apiRequest<{globalAttributes: GlobalAttributeDTO[], totalCount: number}>(`/global-attributes/?limit=${limit}&offset=${offset}`)
+    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(`/global-attributes/?limit=${limit}&offset=${offset}`)
     console.log('fetchGlobalAttributes response:', response)
-    
+
     if (!response || !response.globalAttributes) {
       console.warn('Unexpected response structure for global attributes:', response)
       return []
     }
-    
+
     return response.globalAttributes.map(attr => ({
       id: attr.id,
       name: attr.name,
@@ -206,16 +208,16 @@ export async function fetchApprovals(status?: string, projectId?: string, limit 
     if (projectId) {
       endpoint += `&project_id=${projectId}`
     }
-    
-    const response = await apiRequest<{approvalRequests: ApprovalRequestDTO[], totalCount: number}>(endpoint)
+
+    const response = await apiRequest<{ approvalRequests: ApprovalRequestDTO[], totalCount: number }>(endpoint)
     console.log('fetchApprovals response:', response)
     console.log('First approval item:', response.approvalRequests[0])
-    
+
     if (!response || !response.approvalRequests) {
       console.warn('Unexpected response structure for approvals:', response)
       return []
     }
-    
+
     return response.approvalRequests.map(approval => {
       console.log('Mapping approval:', approval)
       return {
@@ -247,7 +249,7 @@ export async function createProject(data: { name: string; key: string; descripti
     method: 'POST',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     key: response.key,
@@ -267,7 +269,7 @@ export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
       project_key: data.projectKey
     })
   })
-  
+
   return {
     id: response.id,
     key: response.key,
@@ -287,7 +289,7 @@ export async function createTeam(data: { name: string }): Promise<Team> {
     method: 'POST',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
@@ -305,7 +307,7 @@ export async function createGlobalAttribute(data: {
     method: 'POST',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
@@ -320,7 +322,7 @@ export async function updateTeam(teamId: string, data: { name?: string }): Promi
     method: 'PUT',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
@@ -337,7 +339,7 @@ export async function approveRequest(requestId: string, reviewerId: string, comm
       comments: comment
     })
   })
-  
+
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
@@ -366,7 +368,7 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
       comments: comment
     })
   })
-  
+
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
@@ -387,31 +389,31 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
 }
 
 export async function saveFlagDefinition(
-  projectKey: string, 
-  flagKey: string, 
+  projectKey: string,
+  flagKey: string,
   flagConfig: SDKFlagConfig
 ): Promise<{ fileUrl: string }> {
   const jsonBlob = new Blob([JSON.stringify(flagConfig, null, 2)], {
     type: 'application/json'
   })
-  
+
   const formData = new FormData()
   formData.append('file', jsonBlob, `${flagKey}.json`)
-  
+
   const response = await fetch(`/api/proxy/feature-flags/${projectKey}/${flagKey}/definition`, {
     method: 'POST',
     body: formData
   })
-  
+
   if (!response.ok) {
     throw new Error(`Failed to save flag definition: ${response.statusText}`)
   }
-  
+
   return response.json()
 }
 
 export async function getFlagDefinition(
-  projectKey: string, 
+  projectKey: string,
   flagKey: string
 ): Promise<SDKFlagConfig> {
   const response = await apiRequest<SDKFlagConfig>(

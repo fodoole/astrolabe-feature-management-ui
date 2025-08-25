@@ -468,8 +468,24 @@ export function FlagEditor({
                 }`}
                 onClick={() => onSelectFlag(flag.id)}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="font-medium text-sm">{flag.name}</div>
+                 
+                  <div className="flex items-center justify-between mb-1">
+                  <div className="font-medium text-sm">{flag.name}
+                     <span style={{ paddingLeft: 8 }}>
+                        <Badge
+                          className="text-xs"
+                          variant={
+                            flag.status === 'rejected'
+                              ? 'destructive'
+                              : flag.status === 'pending'
+                                ? 'secondary'
+                                : undefined
+                          }
+                        >
+                          {flag.status ? flag.status.charAt(0).toUpperCase() + flag.status.slice(1) : ""}
+                        </Badge>
+                      </span>
+                  </div>
                   <Badge variant="outline" className="text-xs">
                     {flag.dataType}
                   </Badge>
