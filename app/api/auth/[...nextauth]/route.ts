@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
 import type { NextAuthOptions } from 'next-auth'
 import { checkGroupMembership } from '@/lib/google-groups'
+import { syncUserWithBackend } from '@/lib/user-sync'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -27,6 +28,18 @@ export const authOptions: NextAuthOptions = {
         if (!isAuthorized) {
           // Redirect to unauthorized page
           return '/auth/unauthorized'
+        }
+        
+        try {
+          await syncUserWithBackend({
+            name: user.name || '',
+            email: user.email,
+            avatar_url: user.image || null,
+            provider: 'google',
+            provider_id: profile?.sub || account.providerAccountId || ''
+          })
+        } catch (error) {
+          console.error('Failed to sync user with backend:', error)
         }
       }
       return true
