@@ -72,11 +72,12 @@ function friendlyMessage(status: number, formatted: any, raw: any) {
 }
 
 async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH', params: { path: string[] }) {
+  const p  = await params
   const t0 = performance.now()
   const reqId = crypto.randomUUID()
 
   // Build URL
-  const path = (params.path || []).join('/')
+  const path = (p.path || []).join('/')
   const searchParams = request.nextUrl.searchParams
   const queryString = searchParams.toString()
   const url = `${API_BASE_URL}/${path}${path.endsWith('/') ? '' : '/'}${queryString ? `?${queryString}` : ''}`

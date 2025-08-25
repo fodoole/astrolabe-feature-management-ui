@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { toast } from 'sonner'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -59,7 +60,7 @@ export function EditRuleModal({
     e.preventDefault()
     
     if (!returnValue.trim()) {
-      alert("Return value is required")
+      toast.error("Return value is required")
       return
     }
 
@@ -74,7 +75,7 @@ export function EditRuleModal({
         parsedReturnValue = JSON.parse(returnValue)
       }
     } catch (error) {
-      alert("Invalid return value format")
+      toast.error("Invalid return value format")
       return
     }
 
