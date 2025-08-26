@@ -20,7 +20,7 @@ export async function fetchTeamById(teamId: string): Promise<Team> {
         }
       })
       : []
-  }
+  };
 }
 import { apiRequest, PaginatedResponse } from './api-client'
 import type {
