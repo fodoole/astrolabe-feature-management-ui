@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3 } from 'lucide-react'
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type {
   Project,
@@ -445,6 +445,9 @@ export function FlagEditor({
 
   const selectedProjectData = projects.find((p) => p.id === selectedProject)
 
+  // Check if flag is approved
+  const isApproved = currentFlag?.status === 'approved'
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -470,6 +473,53 @@ export function FlagEditor({
         </Alert>
       )}
 
+      {/* Approval Status Alert */}
+      {currentFlag && !isApproved && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-2">
+            {currentFlag.status === 'pending' && <Clock className="h-4 w-4 text-amber-600" />}
+            {currentFlag.status === 'rejected' && <XCircle className="h-4 w-4 text-red-600" />}
+            <AlertDescription className="text-amber-800 flex-1">
+              <div className="flex items-center justify-between">
+                <span>
+                  This flag is <strong>{currentFlag.status}</strong> and cannot be edited until approved.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-4 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => {
+                    const project = projects.find(p => p.id === selectedProject)
+                    if (project) {
+                      window.open(`/?tab=approvals&project=${project.id}`, '_blank')
+                    }
+                  }}
+                >
+                  View Approvals
+                </Button>
+              </div>
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
+      
+      {hasUnsavedChanges && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            You have unsaved changes. Click Save to persist your changes.
+            <Button 
+              onClick={handleSaveChanges} 
+              disabled={isSaving}
+              className="ml-2"
+              size="sm"
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Flag List */}
         <Card className="lg:col-span-1">
@@ -515,23 +565,6 @@ export function FlagEditor({
         <div className="lg:col-span-2">
           {currentFlag ? (
             <div className="space-y-4">
-              {hasUnsavedChanges && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    You have unsaved changes. Click Save to persist your changes.
-                    <Button 
-                      onClick={handleSaveChanges} 
-                      disabled={isSaving}
-                      className="ml-2"
-                      size="sm"
-                    >
-                      {isSaving ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-              
               <Tabs value={selectedEnvironment} onValueChange={(value) => setSelectedEnvironment(value as Environment)}>
                 <div className="flex items-center justify-between mb-4">
                   <TabsList className="grid w-full grid-cols-3">
@@ -562,6 +595,7 @@ export function FlagEditor({
                           <Switch 
                             checked={currentEnvironmentConfig?.enabled || false} 
                             onCheckedChange={handleToggleEnvironment}
+                            disabled={!isApproved}
                           />
                         </div>
                       </div>
@@ -577,6 +611,7 @@ export function FlagEditor({
                                 size="sm" 
                                 onClick={handleStartEditingDefaultValue}
                                 className="h-6 px-2"
+                                disabled={!isApproved}
                               >
                                 <Edit3 className="w-3 h-3 mr-1" />
                                 Edit
@@ -622,7 +657,7 @@ export function FlagEditor({
                               )}
                               
                               <div className="flex gap-2">
-                                <Button size="sm" onClick={handleSaveDefaultValue}>
+                                <Button size="sm" onClick={handleSaveDefaultValue} disabled={!isApproved}>
                                   Save
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
@@ -659,7 +694,7 @@ export function FlagEditor({
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">Targeting Rules</CardTitle>
-                        <Button size="sm" onClick={() => setShowNewRuleModal(true)}>
+                        <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={!isApproved}>
                           <Plus className="w-4 h-4 mr-2" />
                           Add Rule
                         </Button>
@@ -678,7 +713,7 @@ export function FlagEditor({
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)}>
+                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!isApproved}>
                                     <Settings className="w-4 h-4" />
                                   </Button>
                                 </div>

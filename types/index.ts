@@ -104,6 +104,7 @@ export interface FeatureFlag {
   createdAt: Date
   updatedAt: Date
   createdBy: string
+  status: ApprovalStatus
 }
 
 export interface ChangeLog {

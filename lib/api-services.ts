@@ -82,6 +82,7 @@ export interface FeatureFlagDTO {
   description?: string
   dataType: string
   projectId: string
+  status: string
   createdAt: string
   updatedAt: string
   createdBy: string
@@ -235,6 +236,7 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
       dataType: flag.dataType as any,
       projectId: flag.projectId,
       environments: [],
+      status: flag.status,
       createdAt: new Date(flag.createdAt),
       updatedAt: new Date(flag.updatedAt),
       createdBy: flag.createdBy
