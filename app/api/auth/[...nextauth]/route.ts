@@ -51,6 +51,8 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
+      (session as any).accessToken = token.accessToken
+      
       if (session.user?.email) {
         try {
           const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/users/by-email?email=${encodeURIComponent(session.user.email)}`)

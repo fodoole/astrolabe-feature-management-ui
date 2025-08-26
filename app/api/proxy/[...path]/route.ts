@@ -1,8 +1,7 @@
 // app/api/[...path]/route.ts (Next.js App Router)
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_BASE_URL =
-  'https://astrolabe-feature-management-711061180499.europe-west1.run.app/api/v1'
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'https://astrolabe-feature-management-711061180499.europe-west1.run.app'}/api/v1`
 
 // Make sure this route is always dynamic (no caching of proxied results)
 export const dynamic = 'force-dynamic'
@@ -88,6 +87,12 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
   const fetchHeaders: HeadersInit = {
     Accept: 'application/json', // prefer JSON; FastAPI will send proper Content-Type
     'Content-Type': 'application/json',
+  }
+
+  // Forward Authorization header if present
+  const authHeader = request.headers.get('authorization')
+  if (authHeader) {
+    fetchHeaders['Authorization'] = authHeader
   }
 
   // Body (only for POST/PATCH)

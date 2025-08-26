@@ -7,10 +7,10 @@ interface UserSyncData {
 }
 
 export async function syncUserWithBackend(userData: UserSyncData) {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1`
   
   try {
-    const response = await fetch(`${apiUrl}/api/v1/users/sync`, {
+    const response = await fetch(`${apiUrl}/users/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
