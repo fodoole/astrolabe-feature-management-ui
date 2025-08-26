@@ -1,11 +1,35 @@
+// Fetch a single team by ID, including members
+export async function fetchTeamById(teamId: string): Promise<Team> {
+  const response = await apiRequest<any>(`/teams/${teamId}?include=members`)
+  return {
+    id: response.id,
+    name: response.name,
+    members: Array.isArray(response.members)
+      ? response.members.map((member: any) => {
+        // Support both camelCase and snake_case for role name
+        const roleName = (member as any).roleName || (member as any).role_name;
+        // Support both camelCase and snake_case for userId
+        const userId = (member as any).userId || (member as any).user_id;
+        const roleId = (member as any).roleId || (member as any).role_id;
+        return {
+          userId,
+          email: member.email,
+          role: roleName ? String(roleName).toLowerCase() : 'user',
+          name: member.name,
+          roleId: roleId
+        }
+      })
+      : []
+  }
+}
 import { apiRequest, PaginatedResponse } from './api-client'
-import type { 
-  User, 
-  Team, 
+import type {
+  User,
+  Team,
   TeamWithMembers,
-  Project, 
-  FeatureFlag, 
-  GlobalAttribute, 
+  Project,
+  FeatureFlag,
+  GlobalAttribute,
   ApprovalRequest,
   ApprovalStatus,
   AttributeType,
@@ -28,6 +52,7 @@ export interface TeamDTO {
   name: string
   createdAt: string
   updatedAt: string
+  member_count: number
 }
 
 export interface TeamMemberDTO {
@@ -93,12 +118,12 @@ export async function fetchUsers(limit = 100, offset = 0): Promise<User[]> {
   try {
     const response = await apiRequest<UserDTO[]>(`/users/?limit=${limit}&offset=${offset}`)
     console.log('fetchUsers response:', response)
-    
+
     if (!Array.isArray(response)) {
       console.warn('Unexpected response structure for users:', response)
       return []
     }
-    
+
     return response.map(user => ({
       id: user.id,
       name: user.name,
@@ -115,16 +140,19 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
   try {
     const response = await apiRequest<PaginatedResponse<TeamDTO>>(`/teams/?limit=${limit}&offset=${offset}`)
     console.log('fetchTeams response:', response)
-    
+
     if (!response || !response.items) {
       console.warn('Unexpected response structure for teams:', response)
       return []
     }
-    
+
     return response.items.map(team => ({
       id: team.id,
       name: team.name,
-      members: []
+      members: [],
+      memberCount: typeof (team as any).memberCount === 'number'
+        ? (team as any).memberCount
+        : (typeof (team as any).member_count === 'number' ? (team as any).member_count : 0)
     }))
   } catch (error) {
     console.error('Error fetching teams:', error)
@@ -134,17 +162,17 @@ export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
 
 export async function fetchTeamsByProject(projectId: string, includeMembers = false): Promise<Team[]> {
   try {
-    const url = includeMembers 
+    const url = includeMembers
       ? `/projects/${projectId}/teams?include=members`
       : `/projects/${projectId}/teams`
     const response = await apiRequest<PaginatedResponse<TeamDTO | TeamWithMembersDTO>>(url)
     console.log('fetchTeamsByProject response:', response)
-    
+
     if (!response || !response.items) {
       console.warn('Unexpected response structure for project teams:', response)
       return []
     }
-    
+
     return response.items.map(team => ({
       id: team.id,
       name: team.name,
@@ -161,14 +189,14 @@ export async function fetchTeamsByProject(projectId: string, includeMembers = fa
 
 export async function fetchProjects(limit = 100, offset = 0): Promise<Project[]> {
   try {
-    const response = await apiRequest<{projects: ProjectDTO[], totalCount: number}>(`/projects/?limit=${limit}&offset=${offset}`)
+    const response = await apiRequest<{ projects: ProjectDTO[], totalCount: number }>(`/projects/?limit=${limit}&offset=${offset}`)
     console.log('fetchProjects response:', response)
-    
+
     if (!response || !response.projects) {
       console.warn('Unexpected response structure for projects:', response)
       return []
     }
-    
+
     return response.projects.map(project => ({
       id: project.id,
       key: project.key,
@@ -190,15 +218,15 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
     if (projectKey) {
       endpoint += `&project_key=${projectKey}`
     }
-    
-    const response = await apiRequest<{featureFlags: FeatureFlagDTO[], totalCount: number}>(endpoint)
+
+    const response = await apiRequest<{ featureFlags: FeatureFlagDTO[], totalCount: number }>(endpoint)
     console.log('fetchFeatureFlags response:', response)
-    
+
     if (!response || !response.featureFlags) {
       console.warn('Unexpected response structure for feature flags:', response)
       return []
     }
-    
+
     return response.featureFlags.map(flag => ({
       id: flag.id,
       key: flag.key,
@@ -219,14 +247,14 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
 
 export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<GlobalAttribute[]> {
   try {
-    const response = await apiRequest<{globalAttributes: GlobalAttributeDTO[], totalCount: number}>(`/global-attributes/?limit=${limit}&offset=${offset}`)
+    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(`/global-attributes/?limit=${limit}&offset=${offset}`)
     console.log('fetchGlobalAttributes response:', response)
-    
+
     if (!response || !response.globalAttributes) {
       console.warn('Unexpected response structure for global attributes:', response)
       return []
     }
-    
+
     return response.globalAttributes.map(attr => ({
       id: attr.id,
       name: attr.name,
@@ -251,16 +279,15 @@ export async function fetchApprovals(status?: string, projectId?: string, userId
     if (userId) {
       endpoint += `&user_id=${userId}`
     }
-    
-    const response = await apiRequest<{approvalRequests: ApprovalRequestDTO[], totalCount: number}>(endpoint)
+    const response = await apiRequest<{ approvalRequests: ApprovalRequestDTO[], totalCount: number }>(endpoint)
     console.log('fetchApprovals response:', response)
     console.log('First approval item:', response.approvalRequests[0])
-    
+
     if (!response || !response.approvalRequests) {
       console.warn('Unexpected response structure for approvals:', response)
       return []
     }
-    
+
     return response.approvalRequests.map(approval => {
       console.log('Mapping approval:', approval)
       return {
@@ -333,7 +360,7 @@ export async function createProject(data: { name: string; key: string; descripti
       team_ids: data.teamIds || []
     })
   })
-  
+
   return {
     id: response.id,
     key: response.key,
@@ -353,7 +380,7 @@ export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
       project_key: data.projectKey
     })
   })
-  
+
   return {
     id: response.id,
     key: response.key,
@@ -373,7 +400,7 @@ export async function createTeam(data: { name: string }): Promise<Team> {
     method: 'POST',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
@@ -391,7 +418,7 @@ export async function createGlobalAttribute(data: {
     method: 'POST',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
@@ -406,7 +433,7 @@ export async function updateTeam(teamId: string, data: { name?: string }): Promi
     method: 'PUT',
     body: JSON.stringify(data)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
@@ -423,7 +450,7 @@ export async function approveRequest(requestId: string, reviewerId: string, comm
       comments: comment
     })
   })
-  
+
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
@@ -452,7 +479,7 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
       comments: comment
     })
   })
-  
+
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
@@ -495,7 +522,7 @@ export async function createApprovalRequest(data: {
       comments: data.comments
     })
   })
-  
+
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
@@ -516,7 +543,7 @@ export async function createApprovalRequest(data: {
 }
 
 export async function getFlagDefinition(
-  projectKey: string, 
+  projectKey: string,
   flagKey: string
 ): Promise<SDKFlagConfig> {
   const response = await apiRequest<SDKFlagConfig>(
@@ -543,21 +570,41 @@ export async function fetchRoles(): Promise<Role[]> {
   }))
 }
 
+
 export async function updateTeamMembers(
   teamId: string,
-  payload: { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }
+  payload: { upserts: Array<{ user_id: string, role_id: string }>, removes: string[] }
 ): Promise<TeamWithMembers> {
+  // Log the users and roles being sent to the backend
+  // eslint-disable-next-line no-console
+  console.info('[updateTeamMembers] Sending to backend:', {
+    upserts: payload.upserts.map(u => ({ user_id: u.user_id, role_id: u.role_id })),
+    removes: payload.removes
+  })
   const response = await apiRequest<TeamWithMembersDTO>(`/teams/${teamId}/members`, {
     method: 'PUT',
     body: JSON.stringify(payload)
   })
-  
+
   return {
     id: response.id,
     name: response.name,
-    members: response.members.map(member => ({
-      userId: member.user_id,
-      role: member.role_name.toLowerCase() as UserRole
-    }))
+    members: response.members.map(member => {
+      // Support both camelCase and snake_case keys for robustness
+      const roleName = (member as any).roleName || (member as any).role_name;
+      const userId = (member as any).userId || (member as any).user_id;
+      if (!roleName) {
+        // eslint-disable-next-line no-console
+        console.warn('Member missing role_name/roleName:', member)
+        return {
+          userId,
+          role: 'unknown' as UserRole // fallback value, adjust as needed
+        }
+      }
+      return {
+        userId,
+        role: roleName.toLowerCase() as UserRole
+      }
+    })
   }
 }
