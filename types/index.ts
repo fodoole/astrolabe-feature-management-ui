@@ -1,4 +1,4 @@
-export type UserRole = "owner" | "editor" | "viewer"
+export type UserRole = "admin" | "user"
 
 export type AttributeType = "string" | "number" | "boolean"
 
@@ -34,6 +34,7 @@ export interface Team {
   id: string
   name: string
   members: TeamMember[]
+  memberCount?: number
 }
 
 export interface TeamWithMembers {

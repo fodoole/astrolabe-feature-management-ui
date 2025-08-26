@@ -38,18 +38,18 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
     }
   }
 
-  const handleUpdateTeam = async (teamId: string, updates: Partial<Team> | { upserts: Array<{user_id: string, role_id: string}>, removes: string[] }) => {
+  const handleUpdateTeam = async (teamId: string, updates: Partial<Team> | { upserts: Array<{ user_id: string, role_id: string }>, removes: string[] }) => {
     setIsUpdating(true)
     try {
       if ('upserts' in updates || 'removes' in updates) {
-        const updatedTeam = await updateTeamMembers(teamId, updates as { upserts: Array<{user_id: string, role_id: string}>, removes: string[] })
-        const updatedTeams = teams.map(team => 
+        const updatedTeam = await updateTeamMembers(teamId, updates as { upserts: Array<{ user_id: string, role_id: string }>, removes: string[] })
+        const updatedTeams = teams.map(team =>
           team.id === teamId ? { ...team, members: updatedTeam.members } : team
         )
         onTeamsChange?.(updatedTeams)
       } else if (updates.name && !updates.members) {
         const updatedTeam = await updateTeam(teamId, { name: updates.name })
-        const updatedTeams = teams.map(team => 
+        const updatedTeams = teams.map(team =>
           team.id === teamId ? { ...team, name: updatedTeam.name } : team
         )
         onTeamsChange?.(updatedTeams)
@@ -57,26 +57,26 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
       else if (updates.members) {
         const currentTeam = teams.find(team => team.id === teamId)
         if (!currentTeam) throw new Error("Team not found")
-        
+
         const currentMemberIds = new Set(currentTeam.members.map(m => m.userId))
         const newMemberIds = new Set(updates.members.map(m => m.userId))
-        
+
         const upserts = updates.members.map(member => ({
           user_id: member.userId,
           role_id: member.role
         }))
-        
+
         const removes = currentTeam.members
           .filter(member => !newMemberIds.has(member.userId))
           .map(member => member.userId)
-        
+
         const updatedTeam = await updateTeamMembers(teamId, { upserts, removes })
-        const updatedTeams = teams.map(team => 
+        const updatedTeams = teams.map(team =>
           team.id === teamId ? { ...team, members: updatedTeam.members } : team
         )
         onTeamsChange?.(updatedTeams)
       }
-      
+
       setShowManageModal(false)
       showSuccessToast('Team updated successfully!')
     } catch (error) {
@@ -105,29 +105,32 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teams.map((team) => (
-          <Card key={team.id} className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    {team.name}
-                  </CardTitle>
-                  <CardDescription>
-                    {team.members.length} member{team.members.length !== 1 ? "s" : ""}
-                  </CardDescription>
+        {teams.map((team) => {
+          console.log('Rendering team:', team.name, 'memberCount:', team.memberCount, 'type:', typeof team.memberCount, team);
+          return (
+            <Card key={team.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      {team.name}
+                    </CardTitle>
+                    <CardDescription>
+                      {typeof team.memberCount === 'number' ? team.memberCount : 0} member{team.memberCount === 1 ? '' : 's'}
+                    </CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => handleManageTeam(team)}>
+                    <Settings className="w-4 h-4" />
+                  </Button>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleManageTeam(team)}>
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground">Team created and ready for project assignments</div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">Team created and ready for project assignments</div>
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {teams.length === 0 && (
