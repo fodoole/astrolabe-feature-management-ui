@@ -20,7 +20,7 @@ export async function fetchTeamById(teamId: string): Promise<Team> {
         }
       })
       : []
-  }
+  };
 }
 import { apiRequest, PaginatedResponse } from './api-client'
 import type {
@@ -85,6 +85,7 @@ export interface FeatureFlagDTO {
   createdAt: string
   updatedAt: string
   createdBy: string
+  status?: string
 }
 
 export interface GlobalAttributeDTO {
@@ -237,7 +238,8 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
       environments: [],
       createdAt: new Date(flag.createdAt),
       updatedAt: new Date(flag.updatedAt),
-      createdBy: flag.createdBy
+      createdBy: flag.createdBy,
+      status: flag.status
     }))
   } catch (error) {
     console.error('Error fetching feature flags:', error)
