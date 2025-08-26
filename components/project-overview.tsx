@@ -115,22 +115,6 @@ export function ProjectOverview({
                     </div>
                     <span className="font-medium">{stats.totalFlags}</span>
                   </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      <span>Teams</span>
-                    </div>
-                    <span className="font-medium">{projectTeams.length}</span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1">
-                    {projectTeams.map((team) => (
-                      <Badge key={team.id} variant="secondary" className="text-xs">
-                        {team.name}
-                      </Badge>
-                    ))}
-                  </div>
                 </div>
               </CardContent>
             </Card>
