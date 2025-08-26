@@ -23,22 +23,13 @@ export async function fetchTeamById(teamId: string): Promise<Team> {
   };
 }
 import { apiRequest, PaginatedResponse } from './api-client'
-
 import type {
   User,
   Team,
+  TeamWithMembers,
   Project,
   FeatureFlag,
   GlobalAttribute,
-
-import type { 
-  User, 
-  Team, 
-  TeamWithMembers,
-  Project, 
-  FeatureFlag, 
-  GlobalAttribute, 
-
   ApprovalRequest,
   ApprovalStatus,
   AttributeType,
@@ -510,21 +501,6 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
   }
 }
 
-
-export async function saveFlagDefinition(
-  projectKey: string,
-  flagKey: string,
-  flagConfig: SDKFlagConfig
-): Promise<{ fileUrl: string }> {
-  const jsonBlob = new Blob([JSON.stringify(flagConfig, null, 2)], {
-    type: 'application/json'
-  })
-
-  const formData = new FormData()
-  formData.append('file', jsonBlob, `${flagKey}.json`)
-
-  const response = await fetch(`/api/proxy/feature-flags/${projectKey}/${flagKey}/definition`, {
-
 export async function createApprovalRequest(data: {
   entityType: string
   entityId: string
@@ -536,7 +512,6 @@ export async function createApprovalRequest(data: {
   comments?: string
 }): Promise<ApprovalRequest> {
   const response = await apiRequest<ApprovalRequestDTO>('/approvals/', {
-
     method: 'POST',
     body: JSON.stringify({
       entity_type: data.entityType,
@@ -550,14 +525,6 @@ export async function createApprovalRequest(data: {
     })
   })
 
-
-  if (!response.ok) {
-    throw new Error(`Failed to save flag definition: ${response.statusText}`)
-  }
-
-  return response.json()
-
-  
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
@@ -575,12 +542,6 @@ export async function createApprovalRequest(data: {
       oldValue: response.beforeSnapshot
     }
   }
-
-  if (!response.ok) {
-    throw new Error(`Failed to save flag definition: ${response.statusText}`)
-  }
-
-  return response.json()
 }
 
 export async function getFlagDefinition(
