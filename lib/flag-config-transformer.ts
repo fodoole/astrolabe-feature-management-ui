@@ -13,6 +13,7 @@ export interface SDKEnvironmentConfig {
 }
 
 export interface SDKRuleConfig {
+  id?: string
   name?: string
   enabled?: boolean
   logicalOperator?: string

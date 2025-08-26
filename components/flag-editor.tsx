@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type {
   Project,
@@ -59,14 +59,84 @@ export function FlagEditor({
   const [isSaving, setIsSaving] = useState(false)
   const [isCreatingFlag, setIsCreatingFlag] = useState(false)
   const [createFlagMessage, setCreateFlagMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [localFlags, setLocalFlags] = useState<FeatureFlag[]>([])
+  const [localFlags, setLocalFlags] = useState<FeatureFlag[] | any[]>([])
   const [isEditingDefaultValue, setIsEditingDefaultValue] = useState(false)
   const [tempDefaultValue, setTempDefaultValue] = useState("")
+  const [isLoadingFlagDefinition, setIsLoadingFlagDefinition] = useState(false)
+  const [flagDefinitionError, setFlagDefinitionError] = useState<string | null>(null)
 
   useEffect(() => {
     setHasUnsavedChanges(false)
     setLocalFlags(flags)
   }, [selectedFlag, flags])
+
+  useEffect(() => {
+    const fetchFlagDefinition = async () => {
+      if (!selectedFlag || !selectedProject) {
+        setIsLoadingFlagDefinition(false)
+        setFlagDefinitionError(null)
+        return
+      }
+
+      const currentFlag = flags.find(flag => flag.id === selectedFlag)
+      const project = projects.find(p => p.id === selectedProject)
+      
+      if (!currentFlag || !project) {
+        setIsLoadingFlagDefinition(false)
+        setFlagDefinitionError(null)
+        return
+      }
+
+      try {
+        setIsLoadingFlagDefinition(true)
+        setFlagDefinitionError(null)
+        
+        console.log(`Fetching flag definition for project: ${project.key}, flag: ${currentFlag.key}`)
+        const flagDefinition = await getFlagDefinition(project.key, currentFlag.key)
+        
+        console.log('Flag definition fetched:', flagDefinition)
+        
+        // Update the local flag with the fetched definition
+        setLocalFlags(prevFlags => 
+          prevFlags.map(flag => {
+            if (flag.id === selectedFlag) {
+              // Transform the API response to our internal format
+              const updatedEnvironments = flagDefinition.environments?.map(env => ({
+                environment: env.environment as Environment,
+                enabled: env.enabled,
+                defaultValue: env.defaultValue,
+                rules: env.rules?.map(rule => ({
+                  id: rule.id || `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  name: rule.name || 'Unnamed Rule',
+                  conditions: rule.conditions || [],
+                  logicalOperator: (rule.logicalOperator || 'AND') as LogicalOperator,
+                  returnValue: rule.returnValue,
+                  enabled: rule.enabled !== false,
+                  trafficSplits: []
+                })) || [],
+                trafficSplits: []
+              })) || flag.environments
+
+              return {
+                ...flag,
+                environments: updatedEnvironments
+              }
+            }
+            return flag
+          })
+        )
+        
+      } catch (error) {
+        console.error('Error fetching flag definition:', error)
+        setFlagDefinitionError('Failed to load flag definition')
+        handleApiError(error, 'Failed to fetch flag definition')
+      } finally {
+        setIsLoadingFlagDefinition(false)
+      }
+    }
+
+    fetchFlagDefinition()
+  }, [selectedFlag, selectedProject, flags, projects])
 
   const projectFlags = selectedProject ? localFlags.filter((flag) => flag.projectId === selectedProject) : localFlags
 
@@ -565,210 +635,235 @@ export function FlagEditor({
         <div className="lg:col-span-2">
           {currentFlag ? (
             <div className="space-y-4">
-              <Tabs value={selectedEnvironment} onValueChange={(value) => setSelectedEnvironment(value as Environment)}>
-                <div className="flex items-center justify-between mb-4">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="development">Development</TabsTrigger>
-                    <TabsTrigger value="staging">Staging</TabsTrigger>
-                    <TabsTrigger value="production">Production</TabsTrigger>
-                  </TabsList>
-                <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </Button>
-              </div>
+              {/* Loading State */}
+              {isLoadingFlagDefinition && (
+                <Card>
+                  <CardContent className="flex items-center justify-center py-12">
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Loading flag definition...</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-              {/* Auto-approval messaging */}
-              {selectedEnvironment === 'development' && (
-                <Alert className="mb-4 border-blue-200 bg-blue-50">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    Changes to the <strong>development</strong> environment will be auto-approved.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {selectedEnvironment === 'staging' && (
-                <Alert className="mb-4 border-blue-200 bg-blue-50">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    Changes to the <strong>staging</strong> environment will be auto-approved.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {selectedEnvironment === 'production' && (
-                <Alert className="mb-4 border-blue-200 bg-blue-50">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-blue-800">
-                    Changes to the <strong>production</strong> environment will be auto-approved only for the flag owner.
+              {/* Error State */}
+              {flagDefinitionError && (
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    {flagDefinitionError}
                   </AlertDescription>
                 </Alert>
               )}
 
-              {(["development", "staging", "production"] as Environment[]).map((env) => (
-                <TabsContent key={env} value={env} className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            <Flag className="w-5 h-5" />
-                            {currentFlag.name}
-                          </CardTitle>
-                          <CardDescription>{currentFlag.description}</CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">Enabled</span>
-                          <Switch 
-                            checked={currentEnvironmentConfig?.enabled || false} 
-                            onCheckedChange={handleToggleEnvironment}
-                            disabled={!isEditingAllowed}
-                          />
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium">Default Value</label>
-                            {!isEditingDefaultValue && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={handleStartEditingDefaultValue}
-                                className="h-6 px-2"
-                                disabled={!isEditingAllowed}
-                              >
-                                <Edit3 className="w-3 h-3 mr-1" />
-                                Edit
-                              </Button>
-                            )}
+              {/* Flag Content - Hidden while loading */}
+              {!isLoadingFlagDefinition && (
+                <Tabs value={selectedEnvironment} onValueChange={(value) => setSelectedEnvironment(value as Environment)}>
+                  <div className="flex items-center justify-between mb-4">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="development">Development</TabsTrigger>
+                      <TabsTrigger value="staging">Staging</TabsTrigger>
+                      <TabsTrigger value="production">Production</TabsTrigger>
+                    </TabsList>
+                  <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview
+                  </Button>
+                </div>
+
+                {/* Auto-approval messaging */}
+                {selectedEnvironment === 'development' && (
+                  <Alert className="mb-4 border-blue-200 bg-blue-50">
+                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Changes to the <strong>development</strong> environment will be auto-approved.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {selectedEnvironment === 'staging' && (
+                  <Alert className="mb-4 border-blue-200 bg-blue-50">
+                    <CheckCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Changes to the <strong>staging</strong> environment will be auto-approved.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {selectedEnvironment === 'production' && (
+                  <Alert className="mb-4 border-blue-200 bg-blue-50">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Changes to the <strong>production</strong> environment will be auto-approved only for the flag owner.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {(["development", "staging", "production"] as Environment[]).map((env) => (
+                  <TabsContent key={env} value={env} className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="flex items-center gap-2">
+                              <Flag className="w-5 h-5" />
+                              {currentFlag.name}
+                            </CardTitle>
+                            <CardDescription>{currentFlag.description}</CardDescription>
                           </div>
-                          
-                          {isEditingDefaultValue ? (
-                            <div className="space-y-3">
-                              {currentFlag?.dataType === 'boolean' ? (
-                                <Select value={tempDefaultValue} onValueChange={setTempDefaultValue}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="true">true</SelectItem>
-                                    <SelectItem value="false">false</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : currentFlag?.dataType === 'number' ? (
-                                <input
-                                  type="number"
-                                  value={tempDefaultValue}
-                                  onChange={(e) => setTempDefaultValue(e.target.value)}
-                                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                                  placeholder="Enter a number"
-                                />
-                              ) : currentFlag?.dataType === 'json' ? (
-                                <Textarea
-                                  value={tempDefaultValue}
-                                  onChange={(e) => setTempDefaultValue(e.target.value)}
-                                  className="font-mono text-sm min-h-[100px]"
-                                  placeholder="Enter valid JSON"
-                                />
-                              ) : (
-                                <input
-                                  type="text"
-                                  value={tempDefaultValue}
-                                  onChange={(e) => setTempDefaultValue(e.target.value)}
-                                  className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                                  placeholder="Enter a string value"
-                                />
-                              )}
-                              
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={handleSaveDefaultValue} disabled={!isEditingAllowed}>
-                                  Save
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
-                                  Cancel
-                                </Button>
-                              </div>
-                              
-                              <p className="text-xs text-muted-foreground">
-                                {currentFlag?.dataType === 'boolean' && "Select true or false"}
-                                {currentFlag?.dataType === 'number' && "Enter a valid number"}
-                                {currentFlag?.dataType === 'string' && "Enter any text value"}
-                                {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.)"}
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="mt-1 p-3 bg-muted rounded border">
-                              <div className="text-sm font-mono whitespace-pre-wrap">
-                                {formatValueForDisplay(currentEnvironmentConfig?.defaultValue, currentFlag?.dataType)}
-                              </div>
-                              <div className="flex items-center justify-between mt-2">
-                                <p className="text-xs text-muted-foreground">
-                                  Type: {currentFlag?.dataType}
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Enabled</span>
+                            <Switch 
+                              checked={currentEnvironmentConfig?.enabled || false} 
+                              onCheckedChange={handleToggleEnvironment}
+                              disabled={!isEditingAllowed}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Rules Section */}
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">Targeting Rules</CardTitle>
-                        <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={!isEditingAllowed}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Rule
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {currentEnvironmentConfig?.rules && currentEnvironmentConfig.rules.length > 0 ? (
+                      </CardHeader>
+                      <CardContent>
                         <div className="space-y-4">
-                          {currentEnvironmentConfig.rules.map((rule, index) => (
-                            <div key={rule.id} className="border rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{rule.name}</span>
-                                  <Badge variant={rule.enabled ? "default" : "secondary"}>
-                                    {rule.enabled ? "Active" : "Inactive"}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!isEditingAllowed}>
-                                    <Settings className="w-4 h-4" />
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-sm font-medium">Default Value</label>
+                              {!isEditingDefaultValue && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={handleStartEditingDefaultValue}
+                                  className="h-6 px-2"
+                                  disabled={!isEditingAllowed}
+                                >
+                                  <Edit3 className="w-3 h-3 mr-1" />
+                                  Edit
+                                </Button>
+                              )}
+                            </div>
+                            
+                            {isEditingDefaultValue ? (
+                              <div className="space-y-3">
+                                {currentFlag?.dataType === 'boolean' ? (
+                                  <Select value={tempDefaultValue} onValueChange={setTempDefaultValue}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="true">true</SelectItem>
+                                      <SelectItem value="false">false</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : currentFlag?.dataType === 'number' ? (
+                                  <input
+                                    type="number"
+                                    value={tempDefaultValue}
+                                    onChange={(e) => setTempDefaultValue(e.target.value)}
+                                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                                    placeholder="Enter a number"
+                                  />
+                                ) : currentFlag?.dataType === 'json' ? (
+                                  <Textarea
+                                    value={tempDefaultValue}
+                                    onChange={(e) => setTempDefaultValue(e.target.value)}
+                                    className="font-mono text-sm min-h-[100px]"
+                                    placeholder="Enter valid JSON"
+                                  />
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={tempDefaultValue}
+                                    onChange={(e) => setTempDefaultValue(e.target.value)}
+                                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                                    placeholder="Enter a string value"
+                                  />
+                                )}
+                                
+                                <div className="flex gap-2">
+                                  <Button size="sm" onClick={handleSaveDefaultValue} disabled={!isEditingAllowed}>
+                                    Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
+                                    Cancel
                                   </Button>
                                 </div>
+                                
+                                <p className="text-xs text-muted-foreground">
+                                  {currentFlag?.dataType === 'boolean' && "Select true or false"}
+                                  {currentFlag?.dataType === 'number' && "Enter a valid number"}
+                                  {currentFlag?.dataType === 'string' && "Enter any text value"}
+                                  {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.)"}
+                                </p>
                               </div>
-
-                              <RuleBuilder rule={rule} attributes={attributes} readonly={true} />
-
-                              <div className="mt-3 p-2 bg-muted rounded">
-                                <div className="text-xs text-muted-foreground mb-1">Return Value:</div>
-                                <div className="font-mono text-sm">{JSON.stringify(rule.returnValue)}</div>
+                            ) : (
+                              <div className="mt-1 p-3 bg-muted rounded border">
+                                <div className="text-sm font-mono whitespace-pre-wrap">
+                                  {formatValueForDisplay(currentEnvironmentConfig?.defaultValue, currentFlag?.dataType)}
+                                </div>
+                                <div className="flex items-center justify-between mt-2">
+                                  <p className="text-xs text-muted-foreground">
+                                    Type: {currentFlag?.dataType}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )}
+                          </div>
                         </div>
-                      ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Settings className="w-8 h-8 mx-auto mb-2" />
-                          <div className="text-sm">No targeting rules configured</div>
-                          <div className="text-xs">Add rules to control who sees this flag</div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
 
-                </TabsContent>
-              ))}
+                    {/* Rules Section */}
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">Targeting Rules</CardTitle>
+                          <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={!isEditingAllowed}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Rule
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {currentEnvironmentConfig?.rules && currentEnvironmentConfig.rules.length > 0 ? (
+                          <div className="space-y-4">
+                            {currentEnvironmentConfig.rules.map((rule, index) => (
+                              <div key={rule.id} className="border rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">{rule.name}</span>
+                                    <Badge variant={rule.enabled ? "default" : "secondary"}>
+                                      {rule.enabled ? "Active" : "Inactive"}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!isEditingAllowed}>
+                                      <Settings className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                <RuleBuilder rule={rule} attributes={attributes} readonly={true} />
+
+                                <div className="mt-3 p-2 bg-muted rounded">
+                                  <div className="text-xs text-muted-foreground mb-1">Return Value:</div>
+                                  <div className="font-mono text-sm">{JSON.stringify(rule.returnValue)}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Settings className="w-8 h-8 mx-auto mb-2" />
+                            <div className="text-sm">No targeting rules configured</div>
+                            <div className="text-xs">Add rules to control who sees this flag</div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                  </TabsContent>
+                ))}
               </Tabs>
+              )}
             </div>
           ) : (
             <div className="text-center py-12">
