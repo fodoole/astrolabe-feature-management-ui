@@ -1,4 +1,9 @@
+
 "use client"
+// Helper to convert null to undefined for updateURL
+function nullToUndefined<T>(value: T | null): T | undefined {
+  return value === null ? undefined : value;
+}
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -23,7 +28,7 @@ import { ChangeLog } from "./change-log"
 import { ApprovalCenter } from "./approval-center"
 import { FlagDashboard } from "./flag-dashboard"
 import { GetStarted } from "./get-started"
-import { 
+import {
   fetchUsers,
   fetchTeams,
   fetchTeamsByProject,
@@ -58,13 +63,13 @@ interface DashboardWithRoutingProps {
 export default function DashboardWithRouting({ searchParams }: DashboardWithRoutingProps) {
   const router = useRouter()
   const currentSearchParams = useSearchParams()
-  
+
   const [activeTab, setActiveTab] = useState(searchParams.tab || "get-started")
   const [selectedProject, setSelectedProject] = useState<string | null>(searchParams.project || null)
   const [selectedFlag, setSelectedFlag] = useState<string | null>(searchParams.flag || null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [users, setUsers] = useState<User[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [projectTeams, setProjectTeams] = useState<Team[]>([])
@@ -72,11 +77,13 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([])
   const [globalAttributes, setGlobalAttributes] = useState<GlobalAttribute[]>([])
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([])
+  // User filter state for ApprovalCenter
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   // Update URL when tab or project changes
   const updateURL = (newTab?: string, newProject?: string, newFlag?: string) => {
     const params = new URLSearchParams(currentSearchParams.toString())
-    
+
     if (newTab !== undefined) {
       if (newTab) {
         params.set('tab', newTab)
@@ -84,7 +91,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         params.delete('tab')
       }
     }
-    
+
     if (newProject !== undefined) {
       if (newProject) {
         params.set('project', newProject)
@@ -92,7 +99,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         params.delete('project')
       }
     }
-    
+
     if (newFlag !== undefined) {
       if (newFlag) {
         params.set('flag', newFlag)
@@ -100,24 +107,24 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         params.delete('flag')
       }
     }
-    
+
     const newURL = params.toString() ? `/?${params.toString()}` : '/'
     router.push(newURL, { scroll: false })
   }
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId)
-    updateURL(tabId, selectedProject, selectedFlag)
+    updateURL(tabId, nullToUndefined(selectedProject), nullToUndefined(selectedFlag))
   }
 
   const handleProjectChange = (projectId: string) => {
     setSelectedProject(projectId)
-    updateURL(activeTab, projectId, selectedFlag)
+    updateURL(activeTab, nullToUndefined(projectId), nullToUndefined(selectedFlag))
   }
 
   const handleFlagChange = (flagId: string | null) => {
     setSelectedFlag(flagId)
-    updateURL(activeTab, selectedProject, flagId)
+    updateURL(activeTab, nullToUndefined(selectedProject), nullToUndefined(flagId))
   }
 
   useEffect(() => {
@@ -125,7 +132,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
       try {
         setLoading(true)
         setError(null)
-        
+
         const [
           usersData,
           teamsData,
@@ -137,17 +144,17 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
           fetchProjects(),
           fetchGlobalAttributes()
         ])
-        
+
         setUsers(usersData)
         setTeams(teamsData)
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
-        
+
         // Set default project if none selected and projects exist
         if (projectsData.length > 0 && !selectedProject) {
           const defaultProject = projectsData[0].id
           setSelectedProject(defaultProject)
-          updateURL(activeTab, defaultProject, selectedFlag)
+          updateURL(activeTab, nullToUndefined(defaultProject), nullToUndefined(selectedFlag))
         }
       } catch (err) {
         console.error('Failed to load data:', err)
@@ -156,7 +163,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         setLoading(false)
       }
     }
-    
+
     loadData()
   }, [])
 
@@ -189,7 +196,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         setProjectTeams([])
       }
     }
-    
+
     loadProjectTeams()
   }, [selectedProject])
 
@@ -202,7 +209,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         console.error('Failed to load approvals:', err)
       }
     }
-    
+
     if (activeTab === "approvals" || activeTab === "dashboard") {
       loadApprovals()
     }
@@ -276,7 +283,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
             {!loading && !error && (
               <>
                 {activeTab === "get-started" && <GetStarted />}
-                
+
                 {activeTab === "projects" && (
                   <ProjectOverview
                     projects={projects}
@@ -318,6 +325,8 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
                     selectedProject={selectedProject || undefined}
+                    selectedUser={selectedUser || undefined}
+                    onUserChange={setSelectedUser}
                   />
                 )}
 
