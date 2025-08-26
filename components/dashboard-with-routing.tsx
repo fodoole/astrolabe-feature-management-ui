@@ -42,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AstrolabeHeader } from "./astrolabe-header"
 
 const navigationItems = [
-  { id: "dashboard", label: "Dashboard", icon: Flag },
+  // { id: "dashboard", label: "Dashboard", icon: Flag },
   { id: "get-started", label: "Get Started", icon: BookOpen },
   { id: "projects", label: "Projects", icon: Flag },
   { id: "teams", label: "Teams", icon: Users },
