@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useCurrentUser } from "../hooks/useCurrentUser"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -50,7 +49,6 @@ export function FlagEditor({
   onSelectFlag,
   onFlagsChange,
 }: FlagEditorProps) {
-  const { userId } = useCurrentUser()
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>("development")
   const [showNewFlagModal, setShowNewFlagModal] = useState(false)
   const [showNewRuleModal, setShowNewRuleModal] = useState(false)
@@ -213,7 +211,7 @@ export function FlagEditor({
         description: flagData.description,
         data_type: flagData.dataType,
         project_id: flagData.projectId, 
-        created_by: userId || "",
+        created_by: "00000000-0000-0000-0000-000000000000",
         project_key: project.key,
       };
       
@@ -486,7 +484,7 @@ export function FlagEditor({
         entityType: 'feature_flag',
         entityId: currentFlag.id,
         projectId: project.id,
-        requestedBy: userId || "",
+        requestedBy: '00000000-0000-0000-0000-000000000000',
         action: beforeSnapshot ? 'update_flag' : 'create_flag',
         beforeSnapshot,
         afterSnapshot,
