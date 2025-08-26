@@ -18,7 +18,6 @@ import { ProjectOverview } from "./components/project-overview"
 import { TeamManagement } from "./components/team-management"
 import { AttributeManager } from "./components/attribute-manager"
 import { FlagEditor } from "./components/flag-editor"
-import { ChangeLog } from "./components/change-log"
 import { ApprovalCenter } from "./components/approval-center"
 import { FlagDashboard } from "./components/flag-dashboard"
 import { GetStarted } from "./components/get-started"
@@ -42,8 +41,7 @@ const navigationItems = [
   { id: "teams", label: "Teams", icon: Users },
   { id: "attributes", label: "Attributes", icon: Database },
   { id: "flags", label: "Flag Editor", icon: Settings },
-  { id: "changelog", label: "Change Log", icon: FileText },
-  { id: "approvals", label: "Approvals", icon: CheckCircle },
+  { id: "approvals", label: "Change Requests", icon: CheckCircle },
 ]
 
 export default function FeatureFlagDashboard() {
@@ -238,14 +236,6 @@ export default function FeatureFlagDashboard() {
                     selectedFlag={selectedFlag}
                     onSelectFlag={setSelectedFlag}
                     onFlagsChange={loadFeatureFlags}
-                  />
-                )}
-                {activeTab === "changelog" && (
-                  <ChangeLog
-                    changeLogs={[]}
-                    projects={projects}
-                    users={users}
-                    flags={featureFlags}
                   />
                 )}
                 {activeTab === "approvals" && (

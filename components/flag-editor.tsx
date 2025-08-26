@@ -565,7 +565,7 @@ export function FlagEditor({
                     }
                   }}
                 >
-                  View Approvals
+                  View Requests
                 </Button>
               </div>
             </AlertDescription>

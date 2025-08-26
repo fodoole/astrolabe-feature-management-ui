@@ -1,4 +1,3 @@
-
 "use client"
 // Helper to convert null to undefined for updateURL
 function nullToUndefined<T>(value: T | null): T | undefined {
@@ -48,8 +47,7 @@ const navigationItems = [
   { id: "teams", label: "Teams", icon: Users },
   { id: "attributes", label: "Attributes", icon: Database },
   { id: "flags", label: "Flag Editor", icon: Settings },
-  { id: "changelog", label: "Change Log", icon: FileText },
-  { id: "approvals", label: "Approvals", icon: CheckCircle },
+  { id: "approvals", label: "Change Requests", icon: CheckCircle },
 ]
 
 interface DashboardWithRoutingProps {
@@ -306,14 +304,6 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     selectedFlag={selectedFlag}
                     onSelectFlag={handleFlagChange}
                     onFlagsChange={loadFeatureFlags}
-                  />
-                )}
-                {activeTab === "changelog" && (
-                  <ChangeLog
-                    changeLogs={[]}
-                    projects={projects}
-                    users={users}
-                    flags={featureFlags}
                   />
                 )}
                 {activeTab === "approvals" && (
