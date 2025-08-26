@@ -239,7 +239,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
-              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "teams" && (
+              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "teams" && activeTab !== "attributes"  &&  (
                 <>
                   <div className="h-4 w-px bg-border" />
                   <Select value={selectedProject || ""} onValueChange={handleProjectChange}>
