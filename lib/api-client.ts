@@ -50,16 +50,30 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
   
-  const defaultHeaders: Record<string, string> = {
+  let authHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const { getSession } = await import('next-auth/react')
+      const session = await getSession()
+      const accessToken = (session as any)?.accessToken
+      
+      if (accessToken) {
+        authHeaders['Authorization'] = `Bearer ${accessToken}`
+      }
+    } catch (error) {
+      console.warn('Failed to get auth session:', error)
+    }
   }
 
   try {
     const response = await fetch(url, {
       ...options,
       headers: {
-        ...defaultHeaders,
+        ...authHeaders,
         ...options.headers,
       },
       credentials: 'include',
