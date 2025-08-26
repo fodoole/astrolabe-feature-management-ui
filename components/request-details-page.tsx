@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useCurrentUser } from "../hooks/useCurrentUser"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -31,13 +30,14 @@ const statusColors = {
 }
 
 export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
-  const { userId } = useCurrentUser()
   const router = useRouter()
   const [approval, setApproval] = useState<ApprovalRequest | null>(null)
   const [comment, setComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const currentUserId = "00000000-0000-0000-0000-000000000000" // TODO: Get from auth context
 
   useEffect(() => {
     const loadRequestData = async () => {
@@ -67,11 +67,11 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
       .toUpperCase()
 
   const handleApprove = async () => {
-    if (!approval || !userId) return
+    if (!approval) return
     
     setIsSubmitting(true)
     try {
-      const updatedApproval = await approveRequest(approval.id, userId, comment)
+      const updatedApproval = await approveRequest(approval.id, currentUserId, comment)
       setApproval(updatedApproval)
       setComment("")
       showSuccessToast('Request approved successfully!')
@@ -83,11 +83,11 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   }
 
   const handleReject = async () => {
-    if (!approval || !userId) return
+    if (!approval) return
     
     setIsSubmitting(true)
     try {
-      const updatedApproval = await rejectRequest(approval.id, userId, comment)
+      const updatedApproval = await rejectRequest(approval.id, currentUserId, comment)
       setApproval(updatedApproval)
       setComment("")
       showSuccessToast('Request rejected successfully!')
@@ -263,7 +263,7 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
           </div>
 
           {/* Review Section - Only show for pending requests */}
-          {approval.status === "pending" && userId && (
+          {approval.status === "pending" && (
             <>
               {/* Risk Assessment */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

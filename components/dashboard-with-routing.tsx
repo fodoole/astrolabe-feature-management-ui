@@ -6,7 +6,6 @@ function nullToUndefined<T>(value: T | null): T | undefined {
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useCurrentUser } from "../hooks/useCurrentUser"
 import {
   SidebarProvider,
   Sidebar,
@@ -60,7 +59,6 @@ interface DashboardWithRoutingProps {
 }
 
 export default function DashboardWithRouting({ searchParams }: DashboardWithRoutingProps) {
-  const { userId } = useCurrentUser()
   const router = useRouter()
   const currentSearchParams = useSearchParams()
 
@@ -315,7 +313,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     projects={projects}
                     users={users}
                     flags={featureFlags}
-                    currentUserId={userId || undefined}
+                    currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
                     selectedProject={selectedProject || undefined}
                     selectedUser={selectedUser || undefined}
