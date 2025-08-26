@@ -578,6 +578,34 @@ export function FlagEditor({
                 </Button>
               </div>
 
+              {/* Auto-approval messaging */}
+              {selectedEnvironment === 'development' && (
+                <Alert className="mb-4 border-blue-200 bg-blue-50">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    Changes to the <strong>development</strong> environment will be auto-approved.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {selectedEnvironment === 'staging' && (
+                <Alert className="mb-4 border-blue-200 bg-blue-50">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    Changes to the <strong>staging</strong> environment will be auto-approved.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {selectedEnvironment === 'production' && (
+                <Alert className="mb-4 border-blue-200 bg-blue-50">
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800">
+                    Changes to the <strong>production</strong> environment will be auto-approved only for the flag owner.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {(["development", "staging", "production"] as Environment[]).map((env) => (
                 <TabsContent key={env} value={env} className="space-y-6">
                   <Card>
