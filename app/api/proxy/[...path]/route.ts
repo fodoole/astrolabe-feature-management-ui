@@ -71,8 +71,8 @@ function friendlyMessage(status: number, formatted: any, raw: any) {
   return { message: 'Request failed.' }
 }
 
-async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH', params: { path: string[] }) {
-  const p  = await params
+async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'PUT', params: { path: string[] }) {
+  const p = await params
   const t0 = performance.now()
   const reqId = crypto.randomUUID()
 
@@ -128,13 +128,14 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH', par
   const ct = getContentType(upstream.headers)
   const payload = await parseBodyByContentType(upstream)
 
+
   // Log structured response (truncate big bodies)
   const bodyPreview =
     typeof payload === 'string'
       ? payload.slice(0, 800)
       : payload && typeof payload === 'object'
-      ? JSON.stringify(payload).slice(0, 800)
-      : payload
+        ? JSON.stringify(payload).slice(0, 800)
+        : payload
 
   console.info(
     '[proxy:response]',
@@ -148,6 +149,11 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH', par
       bodyPreview,
     })
   )
+
+  // Custom log: check for members in payload
+  if (payload && typeof payload === 'object' && 'members' in payload) {
+    console.warn('[proxy:members-debug]', JSON.stringify({ reqId, members: payload.members }))
+  }
 
   // Error shaping for users, but keep details in logs
   if (!upstream.ok) {
@@ -197,4 +203,8 @@ export async function POST(request: NextRequest, ctx: { params: { path: string[]
 
 export async function PATCH(request: NextRequest, ctx: { params: { path: string[] } }) {
   return proxy(request, 'PATCH', ctx.params)
+}
+
+export async function PUT(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, 'PUT', ctx.params)
 }
