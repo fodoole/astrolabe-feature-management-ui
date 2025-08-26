@@ -1,5 +1,7 @@
 // app/api/[...path]/route.ts (Next.js App Router)
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '../auth/[...nextauth]/route'
 
 const API_BASE_URL =
   'https://astrolabe-feature-management-711061180499.europe-west1.run.app/api/v1'
@@ -76,18 +78,22 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
   const t0 = performance.now()
   const reqId = crypto.randomUUID()
 
+  const session = await getServerSession(authOptions)
+
   // Build URL
   const path = (p.path || []).join('/')
   const searchParams = request.nextUrl.searchParams
   const queryString = searchParams.toString()
   const url = `${API_BASE_URL}/${path}${path.endsWith('/') ? '' : '/'}${queryString ? `?${queryString}` : ''}`
 
-  // Prepare headers
-  // You can forward some headers from the incoming request if needed.
-  // Keep it minimal to avoid CORS/auth surprises.
+  // Prepare headers with authentication
   const fetchHeaders: HeadersInit = {
-    Accept: 'application/json', // prefer JSON; FastAPI will send proper Content-Type
+    Accept: 'application/json',
     'Content-Type': 'application/json',
+  }
+
+  if (session?.accessToken) {
+    fetchHeaders.Authorization = `Bearer ${session.accessToken}`
   }
 
   // Body (only for POST/PATCH)
