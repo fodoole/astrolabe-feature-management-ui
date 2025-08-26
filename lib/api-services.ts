@@ -247,9 +247,14 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
   }
 }
 
-export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<GlobalAttribute[]> {
+export async function fetchGlobalAttributes(limit = 100, offset = 0, search?: string): Promise<GlobalAttribute[]> {
   try {
-    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(`/global-attributes/?limit=${limit}&offset=${offset}`)
+    let endpoint = `/global-attributes/?limit=${limit}&offset=${offset}`
+    if (search && search.trim()) {
+      endpoint += `&search=${encodeURIComponent(search.trim())}`
+    }
+    
+    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
     console.log('fetchGlobalAttributes response:', response)
 
     if (!response || !response.globalAttributes) {
