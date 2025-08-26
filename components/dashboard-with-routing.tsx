@@ -117,7 +117,8 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
 
   const handleProjectChange = (projectId: string) => {
     setSelectedProject(projectId)
-    updateURL(activeTab, nullToUndefined(projectId), nullToUndefined(selectedFlag))
+    setSelectedFlag(null) // Clear selected flag when switching projects
+    updateURL(activeTab, projectId, undefined) // Remove flag from URL
   }
 
   const handleFlagChange = (flagId: string | null) => {
