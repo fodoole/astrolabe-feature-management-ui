@@ -51,6 +51,17 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
+      if (session.user?.email) {
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/users/by-email?email=${encodeURIComponent(session.user.email)}`)
+          if (response.ok) {
+            const userData = await response.json()
+            session.user.id = userData.id
+          }
+        } catch (error) {
+          console.error('Failed to fetch user ID for session:', error)
+        }
+      }
       return session
     },
   },

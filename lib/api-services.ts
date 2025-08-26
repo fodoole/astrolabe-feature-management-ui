@@ -448,10 +448,9 @@ export async function approveRequest(requestId: string, reviewerId: string, comm
     method: 'PATCH',
     body: JSON.stringify({
       status: 'approved',
-      reviewer_id: reviewerId,
       comments: comment
     })
-  })
+  }, reviewerId)
 
   return {
     id: response.id,
@@ -477,10 +476,9 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
     method: 'PATCH',
     body: JSON.stringify({
       status: 'rejected',
-      reviewer_id: reviewerId,
       comments: comment
     })
-  })
+  }, reviewerId)
 
   return {
     id: response.id,
@@ -523,7 +521,7 @@ export async function createApprovalRequest(data: {
       after_snapshot: data.afterSnapshot,
       comments: data.comments
     })
-  })
+  }, data.requestedBy)
 
   return {
     id: response.id,

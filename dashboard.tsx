@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useCurrentUser } from "./hooks/useCurrentUser"
 import {
   SidebarProvider,
   Sidebar,
@@ -45,6 +46,7 @@ const navigationItems = [
 ]
 
 export default function FeatureFlagDashboard() {
+  const { userId } = useCurrentUser()
   const [activeTab, setActiveTab] = useState("get-started")
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
@@ -244,7 +246,7 @@ export default function FeatureFlagDashboard() {
                     projects={projects}
                     users={users}
                     flags={featureFlags}
-                    currentUserId="00000000-0000-0000-0000-000000000000"
+                    currentUserId={userId || undefined}
                     onApprovalsChange={setApprovals}
                     selectedProject={selectedProject || undefined}
                     selectedUser={selectedUser || undefined}
