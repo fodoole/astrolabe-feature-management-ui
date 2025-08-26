@@ -450,7 +450,7 @@ export async function approveRequest(requestId: string, reviewerId: string, comm
       status: 'approved',
       comments: comment
     })
-  }, reviewerId)
+  })
 
   return {
     id: response.id,
@@ -478,7 +478,7 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
       status: 'rejected',
       comments: comment
     })
-  }, reviewerId)
+  })
 
   return {
     id: response.id,
@@ -521,7 +521,7 @@ export async function createApprovalRequest(data: {
       after_snapshot: data.afterSnapshot,
       comments: data.comments
     })
-  }, data.requestedBy)
+  })
 
   return {
     id: response.id,

@@ -46,18 +46,13 @@ function transformKeys(obj: any): any {
 
 export async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {},
-  userId?: string
+  options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
   
   const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-  }
-
-  if (userId) {
-    defaultHeaders['X-User-ID'] = userId
   }
 
   try {
@@ -67,6 +62,7 @@ export async function apiRequest<T>(
         ...defaultHeaders,
         ...options.headers,
       },
+      credentials: 'include',
     })
 
     if (!response.ok) {
