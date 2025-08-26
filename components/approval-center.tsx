@@ -36,7 +36,7 @@ const statusColors = {
   rejected: "destructive" as const,
 }
 
-export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject, selectedUser, onUserChange }: ApprovalCenterProps) {
+export function ApprovalCenter({ approvals, projects, users, flags, currentUserId, onApprovalsChange, selectedProject, selectedUser, onUserChange }: ApprovalCenterProps) {
 
   const router = useRouter()
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
@@ -85,6 +85,8 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
   }
 
   const handleApprove = async (approvalId: string, comment: string) => {
+    if (!currentUserId) return
+    
     try {
       const updatedApproval = await approveRequest(approvalId, currentUserId, comment)
       const updatedApprovals = approvals.map(approval =>
@@ -99,6 +101,8 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
   }
 
   const handleReject = async (approvalId: string, comment: string) => {
+    if (!currentUserId) return
+    
     try {
       const updatedApproval = await rejectRequest(approvalId, currentUserId, comment)
       const updatedApprovals = approvals.map(approval =>

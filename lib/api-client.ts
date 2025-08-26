@@ -50,7 +50,7 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
   
-  const defaultHeaders = {
+  const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   }
@@ -62,6 +62,7 @@ export async function apiRequest<T>(
         ...defaultHeaders,
         ...options.headers,
       },
+      credentials: 'include',
     })
 
     if (!response.ok) {

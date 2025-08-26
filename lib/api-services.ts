@@ -448,7 +448,6 @@ export async function approveRequest(requestId: string, reviewerId: string, comm
     method: 'PATCH',
     body: JSON.stringify({
       status: 'approved',
-      reviewer_id: reviewerId,
       comments: comment
     })
   })
@@ -477,7 +476,6 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
     method: 'PATCH',
     body: JSON.stringify({
       status: 'rejected',
-      reviewer_id: reviewerId,
       comments: comment
     })
   })
