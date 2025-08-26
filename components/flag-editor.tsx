@@ -220,10 +220,8 @@ export function FlagEditor({
       // Refresh the flags list
       await onFlagsChange()
       
-      setCreateFlagMessage({ type: 'success', text: `Flag "${flagData.name}" created successfully!` })
       
       // Clear success message after 3 seconds
-      setTimeout(() => setCreateFlagMessage(null), 3000)
       
       showSuccessToast('Feature flag created successfully!')
       console.log("Flag created successfully:", flagData)
@@ -496,6 +494,51 @@ export function FlagEditor({
       setHasUnsavedChanges(false)
       console.log("Approval request created successfully")
       showSuccessToast("Approval request created successfully. Changes will be applied once approved.")
+      
+      // Wait 500ms then refresh flags and selected flag definition
+      setTimeout(async () => {
+        try {
+          // Refresh the flags list
+          await onFlagsChange()
+          
+          // Refresh the selected flag definition
+          if (selectedFlag && selectedProject) {
+            const flagDefinition = await getFlagDefinition(project.key, currentFlag.key)
+            
+            // Update the local flag with the refreshed definition
+            setLocalFlags(prevFlags => 
+              prevFlags.map(flag => {
+                if (flag.id === selectedFlag) {
+                  const updatedEnvironments = flagDefinition.environments?.map(env => ({
+                    environment: env.environment as Environment,
+                    enabled: env.enabled,
+                    defaultValue: env.defaultValue,
+                    rules: env.rules?.map(rule => ({
+                      id: rule.id || `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      name: rule.name || 'Unnamed Rule',
+                      conditions: rule.conditions || [],
+                      logicalOperator: (rule.logicalOperator || 'AND') as LogicalOperator,
+                      returnValue: rule.returnValue,
+                      enabled: rule.enabled !== false,
+                      trafficSplits: []
+                    })) || [],
+                    trafficSplits: []
+                  })) || flag.environments
+
+                  return {
+                    ...flag,
+                    environments: updatedEnvironments
+                  }
+                }
+                return flag
+              })
+            )
+          }
+        } catch (error) {
+          console.error('Error refreshing data after save:', error)
+        }
+      }, 500)
+      
     } catch (error) {
       handleApiError(error, 'Failed to create approval request')
     } finally {
