@@ -445,8 +445,8 @@ export function FlagEditor({
 
   const selectedProjectData = projects.find((p) => p.id === selectedProject)
 
-  // Check if flag is approved
-  const isApproved = currentFlag?.status === 'approved'
+  // Check if flag editing is allowed (approved or rejected, but not pending)
+  const isEditingAllowed = currentFlag?.status !== 'pending'
 
   return (
     <div className="space-y-6">
@@ -474,7 +474,7 @@ export function FlagEditor({
       )}
 
       {/* Approval Status Alert */}
-      {currentFlag && !isApproved && (
+      {currentFlag && !isEditingAllowed && (
         <Alert className="border-amber-200 bg-amber-50">
           <div className="flex items-center gap-2">
             {currentFlag.status === 'pending' && <Clock className="h-4 w-4 text-amber-600" />}
@@ -595,7 +595,7 @@ export function FlagEditor({
                           <Switch 
                             checked={currentEnvironmentConfig?.enabled || false} 
                             onCheckedChange={handleToggleEnvironment}
-                            disabled={!isApproved}
+                            disabled={!isEditingAllowed}
                           />
                         </div>
                       </div>
@@ -611,7 +611,7 @@ export function FlagEditor({
                                 size="sm" 
                                 onClick={handleStartEditingDefaultValue}
                                 className="h-6 px-2"
-                                disabled={!isApproved}
+                                disabled={!isEditingAllowed}
                               >
                                 <Edit3 className="w-3 h-3 mr-1" />
                                 Edit
@@ -657,7 +657,7 @@ export function FlagEditor({
                               )}
                               
                               <div className="flex gap-2">
-                                <Button size="sm" onClick={handleSaveDefaultValue} disabled={!isApproved}>
+                                <Button size="sm" onClick={handleSaveDefaultValue} disabled={!isEditingAllowed}>
                                   Save
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
@@ -694,7 +694,7 @@ export function FlagEditor({
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">Targeting Rules</CardTitle>
-                        <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={!isApproved}>
+                        <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={!isEditingAllowed}>
                           <Plus className="w-4 h-4 mr-2" />
                           Add Rule
                         </Button>
@@ -713,7 +713,7 @@ export function FlagEditor({
                                   </Badge>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!isApproved}>
+                                  <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!isEditingAllowed}>
                                     <Settings className="w-4 h-4" />
                                   </Button>
                                 </div>
