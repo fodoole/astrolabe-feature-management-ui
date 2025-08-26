@@ -55,16 +55,25 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
   const generateKey = (name: string) => {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .replace(/\s+/g, "_")
-      .replace(/^_+|_+$/g, "")
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/[^a-z0-9_]/g, "") // Remove special characters
+      .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+      .slice(0, 100) // Limit to 100 characters
+  }
+
+  const handleKeyChange = (value: string) => {
+    // Only allow lowercase letters and underscores, limit to 100 chars
+    const sanitizedKey = value.toLowerCase().replace(/[^a-z_]/g, "").slice(0, 100)
+    setKey(sanitizedKey)
   }
 
   const handleNameChange = (value: string) => {
-    setName(value)
+    // Limit name to 100 characters
+    const limitedName = value.slice(0, 100)
+    setName(limitedName)
     // Auto-generate key if it hasn't been manually edited
     if (!key || key === generateKey(name)) {
-      setKey(generateKey(value))
+      setKey(generateKey(limitedName))
     }
   }
 
@@ -93,7 +102,7 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
               <Input
                 id="key"
                 value={key}
-                onChange={(e) => setKey(e.target.value)}
+                onChange={(e) => handleKeyChange(e.target.value)}
                 placeholder="e.g., e_commerce_platform"
                 required
               />
