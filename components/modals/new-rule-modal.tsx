@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { toast } from 'sonner'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -43,12 +44,12 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
     e.preventDefault()
     
     if (!name.trim()) {
-      alert("Rule name is required")
+      toast.error("Rule name is required")
       return
     }
 
     if (!returnValue.trim()) {
-      alert("Return value is required")
+      toast.error("Return value is required")
       return
     }
 
@@ -62,7 +63,7 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
         parsedReturnValue = JSON.parse(returnValue)
       }
     } catch (error) {
-      alert("Invalid return value format")
+      toast.error("Invalid return value format")
       return
     }
 

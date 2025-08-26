@@ -1,4 +1,4 @@
-export type UserRole = "owner" | "editor" | "viewer"
+export type UserRole = "admin" | "user"
 
 export type AttributeType = "string" | "number" | "boolean"
 
@@ -31,6 +31,13 @@ export interface TeamMember {
 }
 
 export interface Team {
+  id: string
+  name: string
+  members: TeamMember[]
+  memberCount?: number
+}
+
+export interface TeamWithMembers {
   id: string
   name: string
   members: TeamMember[]
@@ -124,6 +131,27 @@ export interface ApprovalRequest {
   reviewedAt?: Date
   comments?: string
   changes: any
+  project?: {
+    id: string
+    name: string
+  }
+  flag?: {
+    id: string
+    name: string
+  }
+  requestedByUser?: {
+    id: string
+    name: string
+  }
+  reviewedByUser?: {
+    id: string
+    name: string
+  }
 }
 
 export type ApprovalStatus = "pending" | "approved" | "rejected"
+
+export interface Role {
+  id: string
+  name: string
+}

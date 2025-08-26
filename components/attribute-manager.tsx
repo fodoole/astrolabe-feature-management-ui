@@ -9,6 +9,7 @@ import { Plus, Database, Search, Type, Hash, ToggleLeft } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
 import { createGlobalAttribute } from "../lib/api-services"
+import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
 interface AttributeManagerProps {
   attributes: GlobalAttribute[]
@@ -51,8 +52,9 @@ export function AttributeManager({ attributes, onAttributesChange }: AttributeMa
       if (onAttributesChange) {
         onAttributesChange([...attributes, newAttribute])
       }
+      showSuccessToast('Global attribute created successfully!')
     } catch (error) {
-      console.error("Failed to create attribute:", error)
+      handleApiError(error, 'Failed to create attribute')
     }
   }
 
