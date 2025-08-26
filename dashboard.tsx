@@ -50,6 +50,7 @@ export default function FeatureFlagDashboard() {
   const [activeTab, setActiveTab] = useState("get-started")
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [selectedFlag, setSelectedFlag] = useState<string | null>(null)
+  const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -134,7 +135,7 @@ export default function FeatureFlagDashboard() {
   useEffect(() => {
     const loadApprovals = async () => {
       try {
-        const approvalsData = await fetchApprovals(undefined, selectedProject || undefined)
+        const approvalsData = await fetchApprovals(undefined, selectedProject || undefined, selectedUser || undefined)
         setApprovals(approvalsData)
       } catch (err) {
         console.error('Failed to load approvals:', err)
@@ -144,7 +145,7 @@ export default function FeatureFlagDashboard() {
     if (activeTab === "approvals" || activeTab === "dashboard") {
       loadApprovals()
     }
-  }, [activeTab, selectedProject])
+  }, [activeTab, selectedProject, selectedUser])
 
   return (
     <SidebarProvider defaultOpen>
@@ -256,6 +257,8 @@ export default function FeatureFlagDashboard() {
                     currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
                     selectedProject={selectedProject || undefined}
+                    selectedUser={selectedUser || undefined}
+                    onUserChange={setSelectedUser}
                   />
                 )}
 

@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye, ExternalLink, User } from 'lucide-react'
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { approveRequest, rejectRequest } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ApprovalCenterProps {
   approvals: ApprovalRequest[]
@@ -19,6 +20,8 @@ interface ApprovalCenterProps {
   currentUserId?: string
   onApprovalsChange?: (approvals: ApprovalRequest[]) => void
   selectedProject?: string
+  selectedUser?: string
+  onUserChange?: (userId: string | null) => void
 }
 
 const statusIcons = {
@@ -33,7 +36,8 @@ const statusColors = {
   rejected: "destructive" as const,
 }
 
-export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject }: ApprovalCenterProps) {
+export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject, selectedUser, onUserChange }: ApprovalCenterProps) {
+
   const router = useRouter()
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
@@ -49,19 +53,25 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
       .join("")
       .toUpperCase()
 
-  const filteredApprovals = useMemo(() => {
-    let filtered = approvals
-    
-    if (selectedProject) {
-      filtered = filtered.filter(approval => approval.projectId === selectedProject)
-    }
-    
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter(approval => approval.status === selectedStatus)
-    }
-    
-    return filtered
-  }, [approvals, selectedProject, selectedStatus])
+  // Best-practice: encapsulate all filtering logic in a single function
+  function filterApprovals(
+    approvals: ApprovalRequest[],
+    projectId?: string,
+    userId?: string,
+    status: ApprovalStatus | "all" = "all"
+  ): ApprovalRequest[] {
+    return approvals.filter((approval) => {
+      if (projectId && approval.projectId !== projectId) return false;
+      if (userId && approval.requestedBy !== userId && approval.reviewedBy !== userId) return false;
+      if (status !== "all" && approval.status !== status) return false;
+      return true;
+    });
+  }
+
+  const filteredApprovals = useMemo(
+    () => filterApprovals(approvals, selectedProject, selectedUser, selectedStatus),
+    [approvals, selectedProject, selectedUser, selectedStatus]
+  );
 
   const sortedApprovals = filteredApprovals.sort((a, b) => {
     if (a.status === "pending" && b.status !== "pending") return -1
@@ -77,7 +87,7 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
   const handleApprove = async (approvalId: string, comment: string) => {
     try {
       const updatedApproval = await approveRequest(approvalId, currentUserId, comment)
-      const updatedApprovals = approvals.map(approval => 
+      const updatedApprovals = approvals.map(approval =>
         approval.id === approvalId ? updatedApproval : approval
       )
       onApprovalsChange?.(updatedApprovals)
@@ -91,7 +101,7 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
   const handleReject = async (approvalId: string, comment: string) => {
     try {
       const updatedApproval = await rejectRequest(approvalId, currentUserId, comment)
-      const updatedApprovals = approvals.map(approval => 
+      const updatedApprovals = approvals.map(approval =>
         approval.id === approvalId ? updatedApproval : approval
       )
       onApprovalsChange?.(updatedApprovals)
@@ -111,30 +121,49 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Button
-          variant={selectedStatus === "all" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setSelectedStatus("all")}
-        >
-          All ({approvals.length})
-        </Button>
-        {(["pending", "approved", "rejected"] as ApprovalStatus[]).map((status) => {
-          const Icon = statusIcons[status]
-          const count = approvals.filter((a) => a.status === status).length
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-2">
+          <Button
+            variant={selectedStatus === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedStatus("all")}
+          >
+            All ({approvals.length})
+          </Button>
+          {(["pending", "approved", "rejected"] as ApprovalStatus[]).map((status) => {
+            const Icon = statusIcons[status]
+            const count = approvals.filter((a) => a.status === status).length
 
-          return (
-            <Button
-              key={status}
-              variant={selectedStatus === status ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedStatus(status)}
-            >
-              <Icon className="w-4 h-4 mr-1" />
-              {status} ({count})
-            </Button>
-          )
-        })}
+            return (
+              <Button
+                key={status}
+                variant={selectedStatus === status ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedStatus(status)}
+              >
+                <Icon className="w-4 h-4 mr-1" />
+                {status} ({count})
+              </Button>
+            )
+          })}
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <User className="w-4 h-4 text-muted-foreground" />
+          <Select value={selectedUser || "all"} onValueChange={(value) => onUserChange?.(value === "all" ? null : value)}>
+            <SelectTrigger className="w-[250px]">
+              <SelectValue placeholder="Filter by user" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Users</SelectItem>
+              {users.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -166,7 +195,7 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                     <div className="text-right text-sm text-muted-foreground">
                       {approval.requestedAt.toLocaleDateString()}
                     </div>
-                    <Button 
+                    <Button
                       onClick={() => handleReview(approval)}
                       variant={approval.status === "pending" ? "default" : "outline"}
                       className="gap-2"
