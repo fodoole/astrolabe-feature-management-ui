@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
-import { createGlobalAttribute, fetchGlobalAttributes } from "../lib/api-services"
+import { createGlobalAttributeApproval, fetchGlobalAttributes } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
 interface AttributeManagerProps {
   attributes: GlobalAttribute[]
   onAttributesChange?: (attributes: GlobalAttribute[]) => void
+  selectedProject?: string | null
+  currentUserId?: string
 }
 
 const typeIcons = {
@@ -30,7 +32,7 @@ const typeColors = {
 
 const ITEMS_PER_PAGE = 10
 
-export function AttributeManager({ attributes: initialAttributes, onAttributesChange }: AttributeManagerProps) {
+export function AttributeManager({ attributes: initialAttributes, onAttributesChange, selectedProject, currentUserId }: AttributeManagerProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<AttributeType | "all">("all")
   const [showNewAttributeModal, setShowNewAttributeModal] = useState(false)
@@ -88,16 +90,23 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
     description: string
     possibleValues?: string[]
   }) => {
+    if (!selectedProject) {
+      handleApiError(new Error('No project selected'), 'Please select a project first')
+      return
+    }
     try {
-      const newAttribute = await createGlobalAttribute(attributeData)
-      // Refresh the current page to show the new attribute
+      await createGlobalAttributeApproval({
+        projectId: selectedProject,
+        requestedBy: currentUserId || '00000000-0000-0000-0000-000000000000',
+        name: attributeData.name,
+        type: attributeData.type,
+        description: attributeData.description,
+        possibleValues: attributeData.possibleValues
+      })
       await loadAttributes(searchQuery, currentPage)
-      if (onAttributesChange) {
-        onAttributesChange([...attributes, newAttribute])
-      }
-      showSuccessToast('Global attribute created successfully!')
+      showSuccessToast('Change request created. Attribute will appear after approval.')
     } catch (error) {
-      handleApiError(error, 'Failed to create attribute')
+      handleApiError(error, 'Failed to create attribute change request')
     }
   }
 
