@@ -27,7 +27,7 @@ export function RuleConditionEditor({
   logicalOperator = "AND",
   onLogicalOperatorChange
 }: RuleConditionEditorProps) {
-  const attribute = attributes.find(attr => attr.id === condition.attributeId)
+  const attribute = attributes.find(attr => attr.name === condition.attributeName)
   
   const getAvailableOperators = (attributeType?: string): ComparisonOperator[] => {
     const baseOperators: ComparisonOperator[] = ["equals", "not_equals"]
@@ -144,15 +144,15 @@ export function RuleConditionEditor({
         )}
 
         <Select
-          value={condition.attributeId}
-          onValueChange={(value) => onUpdate("attributeId", value)}
+          value={condition.attributeName}
+          onValueChange={(value) => onUpdate("attributeName", value)}
         >
           <SelectTrigger className="flex-1">
             <SelectValue placeholder="Select attribute" />
           </SelectTrigger>
           <SelectContent>
             {attributes.map((attr) => (
-              <SelectItem key={attr.id} value={attr.id}>
+              <SelectItem key={attr.id} value={attr.name}>
                 {attr.name} ({attr.type})
               </SelectItem>
             ))}

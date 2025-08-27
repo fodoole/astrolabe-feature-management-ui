@@ -86,7 +86,7 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
     setConditions([
       ...conditions,
       {
-        attributeId: "",
+        attributeName: "",
         operator: "equals",
         value: "",
       },

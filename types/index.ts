@@ -62,7 +62,7 @@ export interface GlobalAttribute {
 }
 
 export interface RuleCondition {
-  attributeId: string
+  attributeName: string
   operator: ComparisonOperator
   value: string | number | boolean
   listValues?: string[] // For "in" and "not_in" operators
