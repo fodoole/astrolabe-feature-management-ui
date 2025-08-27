@@ -101,7 +101,7 @@ export function EditRuleModal({
     setConditions([
       ...conditions,
       {
-        attributeId: "",
+        attributeName: "",
         operator: "equals",
         value: "",
       },
@@ -120,7 +120,7 @@ export function EditRuleModal({
     setConditions(conditions.filter((_, i) => i !== index))
   }
 
-  const getAttributeById = (id: string) => attributes.find((attr) => attr.id === id)
+  const getAttributeByName = (name: string) => attributes.find((attr) => attr.name === name)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

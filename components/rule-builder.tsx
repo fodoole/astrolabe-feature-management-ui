@@ -22,8 +22,8 @@ const operatorLabels: Record<ComparisonOperator, string> = {
 }
 
 export function RuleBuilder({ rule, attributes, readonly = false }: RuleBuilderProps) {
-  const getAttributeName = (attributeId: string) => {
-    const attribute = attributes.find((attr) => attr.id === attributeId)
+  const getAttributeName = (attributeName: string) => {
+    const attribute = attributes.find((attr) => attr.name === attributeName)
     return attribute?.name || "Unknown"
   }
 
@@ -41,7 +41,7 @@ export function RuleBuilder({ rule, attributes, readonly = false }: RuleBuilderP
                     {rule.logicalOperator}
                   </Badge>
                 )}
-                <Badge variant="secondary">{getAttributeName(condition.attributeId)}</Badge>
+                <Badge variant="secondary">{getAttributeName(condition.attributeName)}</Badge>
                 <Badge variant="outline">{operatorLabels[condition.operator]}</Badge>
                 
                 {condition.operator === "in" || condition.operator === "not_in" ? (

@@ -22,7 +22,7 @@ export interface SDKRuleConfig {
 }
 
 export interface SDKCondition {
-  attributeId: string
+  attributeName: string
   operator: string
   value?: unknown
   listValues?: unknown[]
@@ -56,7 +56,7 @@ function transformRuleToSDK(rule: Rule): SDKRuleConfig {
 
 function transformConditionToSDK(condition: RuleCondition): SDKCondition {
   return {
-    attributeId: condition.attributeId,
+    attributeName: condition.attributeName,
     operator: condition.operator,
     value: condition.value,
     listValues: condition.listValues

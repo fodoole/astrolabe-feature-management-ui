@@ -34,8 +34,8 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
 
   const environmentConfig = flag.environments.find(env => env.environment === environment)
   
-  const handleAttributeChange = (attributeId: string, value: string) => {
-    const attribute = attributes.find(attr => attr.id === attributeId)
+  const handleAttributeChange = (attributeName: string, value: string) => {
+    const attribute = attributes.find(attr => attr.name === attributeName)
     if (!attribute) return
 
     let parsedValue: any = value
@@ -51,7 +51,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
 
     setUserAttributes(prev => ({
       ...prev,
-      [attributeId]: parsedValue
+      [attributeName]: parsedValue
     }))
   }
 
@@ -80,8 +80,8 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
 
         // Evaluate conditions
         for (const condition of rule.conditions) {
-          const attribute = attributes.find(attr => attr.id === condition.attributeId)
-          const userValue = userAttributes[condition.attributeId]
+          const attribute = attributes.find(attr => attr.name === condition.attributeName)
+          const userValue = userAttributes[condition.attributeName]
           
           let conditionMatches = false
           let conditionDetail = {
@@ -159,7 +159,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
           // Handle traffic splits vs simple return value
           if (rule.trafficSplits && rule.trafficSplits.length > 0) {
             // Use user_id for consistent traffic splitting
-            const userId = userAttributes["5"] || userAttributes["user_id"] || 0
+            const userId = userAttributes["user_id"] || 0
             const hash = Math.abs(Number(userId)) % 100
             
             let cumulativePercentage = 0
@@ -192,15 +192,15 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
   const presetUsers = [
     {
       name: "Premium US User",
-      attributes: { "1": "US", "3": true, "2": 28, "5": 12345 }
+      attributes: { "country": "US", "is_premium": true, "age": 28, "user_id": 12345 }
     },
     {
       name: "Free UK User", 
-      attributes: { "1": "UK", "3": false, "2": 22, "5": 67890 }
+      attributes: { "country": "UK", "is_premium": false, "age": 22, "user_id": 67890 }
     },
     {
       name: "Premium DE User",
-      attributes: { "1": "DE", "3": true, "2": 35, "5": 11111 }
+      attributes: { "country": "DE", "is_premium": true, "age": 35, "user_id": 11111 }
     }
   ]
 
@@ -258,8 +258,8 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                   <div key={attribute.id} className="space-y-1">
                     <Label className="text-xs">{attribute.name} ({attribute.type})</Label>
                     <Input
-                      value={userAttributes[attribute.id] || ""}
-                      onChange={(e) => handleAttributeChange(attribute.id, e.target.value)}
+                      value={userAttributes[attribute.name] || ""}
+                      onChange={(e) => handleAttributeChange(attribute.name, e.target.value)}
                       placeholder={
                         attribute.type === "boolean" ? "true/false" :
                         attribute.type === "number" ? "123" :
@@ -274,7 +274,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                             key={value}
                             variant="outline"
                             className="text-xs cursor-pointer hover:bg-muted"
-                            onClick={() => handleAttributeChange(attribute.id, value)}
+                            onClick={() => handleAttributeChange(attribute.name, value)}
                           >
                             {value}
                           </Badge>
@@ -365,7 +365,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                   <pre>{`# Check if flag is enabled
 if ff.is_enabled("${flag.key}", user_attributes={
     ${Object.entries(userAttributes).map(([key, value]) => {
-      const attr = attributes.find(a => a.id === key)
+      const attr = attributes.find(a => a.name === key)
       return `"${attr?.name || key}": ${JSON.stringify(value)}`
     }).join(',\n    ')}
 }):
@@ -386,7 +386,7 @@ value = ff.get_value("${flag.key}",
                   <pre>{`// Check if flag is enabled
 if (ff.isEnabled("${flag.key}", {
     ${Object.entries(userAttributes).map(([key, value]) => {
-      const attr = attributes.find(a => a.id === key)
+      const attr = attributes.find(a => a.name === key)
       return `${attr?.name || key}: ${JSON.stringify(value)}`
     }).join(',\n    ')}
 })) {

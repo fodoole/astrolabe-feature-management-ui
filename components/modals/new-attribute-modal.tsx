@@ -38,11 +38,21 @@ export function NewAttributeModal({ open, onOpenChange, onCreateAttribute }: New
   const [possibleValues, setPossibleValues] = useState<string[]>([])
   const [newValue, setNewValue] = useState("")
 
+  const generateKey = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/[^a-z0-9_]/g, "") // Remove special characters
+      .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+      .slice(0, 100) // Limit to 100 characters
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (name.trim()) {
+      const formattedName = generateKey(name.trim())
       onCreateAttribute({
-        name: name.trim(),
+        name: formattedName,
         type,
         description: description.trim(),
         possibleValues: possibleValues.length > 0 ? possibleValues : undefined,

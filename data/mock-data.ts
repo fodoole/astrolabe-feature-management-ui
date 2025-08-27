@@ -100,7 +100,7 @@ export const mockData = {
             {
               id: "1",
               name: "Premium users",
-              conditions: [{ attributeId: "3", operator: "equals" as const, value: true }],
+              conditions: [{ attributeName: "is_premium", operator: "equals" as const, value: true }],
               logicalOperator: "AND" as const,
               returnValue: true,
               enabled: true,
@@ -110,7 +110,7 @@ export const mockData = {
               name: "Country-based feature",
               conditions: [
                 {
-                  attributeId: "1",
+                  attributeName: "country",
                   operator: "in" as const,
                   value: "",
                   listValues: ["US", "CA", "UK"],
@@ -125,7 +125,7 @@ export const mockData = {
               name: "Modulus-based rollout",
               conditions: [
                 {
-                  attributeId: "5",
+                  attributeName: "user_id",
                   operator: "modulus_equals" as const,
                   value: 0,
                   modulusValue: 10,
@@ -169,7 +169,7 @@ export const mockData = {
             {
               id: "2",
               name: "US users get more options",
-              conditions: [{ attributeId: "1", operator: "equals" as const, value: "US" }],
+              conditions: [{ attributeName: "country", operator: "equals" as const, value: "US" }],
               logicalOperator: "AND" as const,
               returnValue: ["credit_card", "paypal", "apple_pay", "google_pay"],
               enabled: true,
@@ -222,7 +222,7 @@ export const mockData = {
             {
               id: "6",
               name: "Feature A/B Test",
-              conditions: [{ attributeId: "3", operator: "equals" as const, value: true }],
+              conditions: [{ attributeName: "is_premium", operator: "equals" as const, value: true }],
               logicalOperator: "AND" as const,
               enabled: true,
               trafficSplits: [
