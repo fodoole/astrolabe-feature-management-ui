@@ -82,6 +82,7 @@ export interface FeatureFlagDTO {
   description?: string
   dataType: string
   projectId: string
+  status: string
   createdAt: string
   updatedAt: string
   createdBy: string
@@ -235,6 +236,7 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
       dataType: flag.dataType as any,
       projectId: flag.projectId,
       environments: [],
+      status: flag.status,
       createdAt: new Date(flag.createdAt),
       updatedAt: new Date(flag.updatedAt),
       createdBy: flag.createdBy
@@ -245,9 +247,14 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
   }
 }
 
-export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<GlobalAttribute[]> {
+export async function fetchGlobalAttributes(limit = 100, offset = 0, search?: string): Promise<GlobalAttribute[]> {
   try {
-    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(`/global-attributes/?limit=${limit}&offset=${offset}`)
+    let endpoint = `/global-attributes/?limit=${limit}&offset=${offset}`
+    if (search && search.trim()) {
+      endpoint += `&search=${encodeURIComponent(search.trim())}`
+    }
+    
+    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
     console.log('fetchGlobalAttributes response:', response)
 
     if (!response || !response.globalAttributes) {
@@ -267,7 +274,7 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0): Promise<Gl
   }
 }
 
-export async function fetchApprovals(status?: string, projectId?: string, limit = 100, offset = 0): Promise<ApprovalRequest[]> {
+export async function fetchApprovals(status?: string, projectId?: string, userId?: string, limit = 100, offset = 0): Promise<ApprovalRequest[]> {
   try {
     let endpoint = `/approvals/?limit=${limit}&offset=${offset}`
     if (status) {
@@ -276,7 +283,9 @@ export async function fetchApprovals(status?: string, projectId?: string, limit 
     if (projectId) {
       endpoint += `&project_id=${projectId}`
     }
-
+    if (userId) {
+      endpoint += `&user_id=${userId}`
+    }
     const response = await apiRequest<{ approvalRequests: ApprovalRequestDTO[], totalCount: number }>(endpoint)
     console.log('fetchApprovals response:', response)
     console.log('First approval item:', response.approvalRequests[0])

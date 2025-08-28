@@ -1,8 +1,7 @@
 // app/api/[...path]/route.ts (Next.js App Router)
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_BASE_URL =
-  'https://astrolabe-feature-management-711061180499.europe-west1.run.app/api/v1'
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1`
 
 // Make sure this route is always dynamic (no caching of proxied results)
 export const dynamic = 'force-dynamic'

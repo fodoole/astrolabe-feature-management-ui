@@ -48,7 +48,27 @@ export function RuleConditionEditor({
   }
 
   const handleListValuesChange = (values: string[]) => {
-    onUpdate("listValues", values)
+    if (!attribute) {
+      onUpdate("listValues", values)
+      return
+    }
+
+    let convertedValues: any[] = values
+    
+    try {
+      if (attribute.type === "number") {
+        convertedValues = values.map(v => {
+          const num = Number.parseFloat(v)
+          return isNaN(num) ? v : num
+        })
+      } else if (attribute.type === "boolean") {
+        convertedValues = values.map(v => v.toLowerCase() === "true")
+      }
+    } catch (error) {
+      convertedValues = values
+    }
+    
+    onUpdate("listValues", convertedValues)
   }
 
   const renderValueInput = () => {
@@ -71,7 +91,7 @@ export function RuleConditionEditor({
               <Input
                 type="number"
                 value={condition.modulusValue || ""}
-                onChange={(e) => onUpdate("modulusValue", parseInt(e.target.value) || 0)}
+                onChange={(e) => onUpdate("modulusValue", e.target.value === "" ? 0 : Number.parseFloat(e.target.value) || 0)}
                 placeholder="100"
                 className="text-sm"
               />
@@ -81,7 +101,7 @@ export function RuleConditionEditor({
               <Input
                 type="number"
                 value={String(condition.value || "")}
-                onChange={(e) => onUpdate("value", parseInt(e.target.value) || 0)}
+                onChange={(e) => onUpdate("value", e.target.value === "" ? 0 : Number.parseFloat(e.target.value) || 0)}
                 placeholder="0"
                 className="text-sm"
               />
@@ -112,10 +132,34 @@ export function RuleConditionEditor({
       )
     }
 
+    const handleValueChange = (inputValue: string) => {
+      if (!attribute) {
+        onUpdate("value", inputValue)
+        return
+      }
+
+      let convertedValue: string | number | boolean = inputValue
+      
+      try {
+        if (attribute.type === "number") {
+          convertedValue = inputValue === "" ? "" : Number.parseFloat(inputValue)
+          if (isNaN(convertedValue as number)) {
+            convertedValue = inputValue
+          }
+        } else if (attribute.type === "boolean") {
+          convertedValue = inputValue.toLowerCase() === "true"
+        }
+      } catch (error) {
+        convertedValue = inputValue
+      }
+      
+      onUpdate("value", convertedValue)
+    }
+
     return (
       <Input
         value={String(condition.value || "")}
-        onChange={(e) => onUpdate("value", e.target.value)}
+        onChange={(e) => handleValueChange(e.target.value)}
         placeholder={
           attribute?.type === "number" ? "123" :
           attribute?.possibleValues ? attribute.possibleValues[0] : "value"

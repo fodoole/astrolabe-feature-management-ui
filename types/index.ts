@@ -65,7 +65,7 @@ export interface RuleCondition {
   attributeId: string
   operator: ComparisonOperator
   value: string | number | boolean
-  listValues?: string[] // For "in" and "not_in" operators
+  listValues?: (string | number | boolean)[] // For "in" and "not_in" operators
   modulusValue?: number // For "modulus_equals" operator (the divisor)
 }
 
@@ -104,6 +104,7 @@ export interface FeatureFlag {
   createdAt: Date
   updatedAt: Date
   createdBy: string
+  status: ApprovalStatus
 }
 
 export interface ChangeLog {

@@ -59,15 +59,24 @@ export function NewFlagModal({ open, onOpenChange, projectId, onCreateFlag, isCr
   const generateKey = (name: string) => {
     return name
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, "")
-      .replace(/\s+/g, "_")
-      .replace(/^_+|_+$/g, "")
+      .replace(/\s+/g, "_") // Replace spaces with underscores
+      .replace(/[^a-z0-9_]/g, "") // Remove special characters
+      .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores
+      .slice(0, 100) // Limit to 100 characters
+  }
+
+  const handleKeyChange = (value: string) => {
+    // Only allow lowercase letters, numbers, and underscores, limit to 100 chars
+    const sanitizedKey = value.toLowerCase().replace(/[^a-z_]/g, "").slice(0, 100)
+    setKey(sanitizedKey)
   }
 
   const handleNameChange = (value: string) => {
-    setName(value)
+    // Limit name to 100 characters
+    const limitedName = value.slice(0, 100)
+    setName(limitedName)
     if (!key || key === generateKey(name)) {
-      setKey(generateKey(value))
+      setKey(generateKey(limitedName))
     }
   }
 
@@ -96,7 +105,7 @@ export function NewFlagModal({ open, onOpenChange, projectId, onCreateFlag, isCr
               <Input
                 id="key"
                 value={key}
-                onChange={(e) => setKey(e.target.value)}
+                onChange={(e) => handleKeyChange(e.target.value)}
                 placeholder="e.g., new_checkout_flow"
                 required
               />
