@@ -48,6 +48,11 @@ export function NewRuleModal({ open, onOpenChange, attributes, flagDataType, onC
       return
     }
 
+    if (conditions.length === 0) {
+      toast.error("At least one condition is required")
+      return
+    }
+
     if (!returnValue.trim()) {
       toast.error("Return value is required")
       return
