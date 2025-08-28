@@ -56,6 +56,12 @@ export function NewAttributeModal({ open, onOpenChange, onCreateAttribute }: New
     }
   }
 
+  const handleNameChange = (value: string) => {
+    // Only allow lowercase letters, numbers, and underscores, limit to 100 chars
+    const sanitizedName = value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 100)
+    setName(sanitizedName)
+  }
+
   const handleAddValue = () => {
     if (newValue.trim() && !possibleValues.includes(newValue.trim())) {
       setPossibleValues([...possibleValues, newValue.trim()])
@@ -88,10 +94,11 @@ export function NewAttributeModal({ open, onOpenChange, onCreateAttribute }: New
               <Input
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="e.g., user_country, subscription_tier"
                 required
               />
+              <p className="text-sm text-gray-500">Limited to 100 characters. Only lowercase letters, numbers, and underscores are allowed.</p>
             </div>
 
             <div className="grid gap-2">
