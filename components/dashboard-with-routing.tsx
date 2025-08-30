@@ -295,7 +295,14 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                   />
                 )}
                 {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
-                {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
+                {activeTab === "attributes" && (
+  <AttributeManager
+    attributes={globalAttributes}
+    onAttributesChange={setGlobalAttributes}
+    selectedProject={selectedProject}
+    currentUserId="00000000-0000-0000-0000-000000000000"
+  />
+)}
                 {activeTab === "flags" && (
                   <FlagEditor
                     projects={projects}

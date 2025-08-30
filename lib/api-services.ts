@@ -415,6 +415,44 @@ export async function createTeam(data: { name: string }): Promise<Team> {
   }
 }
 
+export async function createGlobalAttributeApproval(data: {
+  projectId: string
+  requestedBy: string
+  name: string
+  type: AttributeType
+  description?: string
+  possibleValues?: string[]
+}): Promise<ApprovalRequest> {
+  const response = await apiRequest<ApprovalRequestDTO>(`/global-attributes/?requested_by=${encodeURIComponent(data.requestedBy)}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      project_id: data.projectId,
+      name: data.name,
+      type: data.type,
+      description: data.description,
+      possible_values: data.possibleValues
+    })
+  })
+
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
+  }
+}
+
 export async function createGlobalAttribute(data: {
   name: string
   type: AttributeType
