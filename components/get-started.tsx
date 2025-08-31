@@ -218,6 +218,45 @@ process_payment(payment_methods)`}
                   id="python-usage"
                 />
               </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Advanced Configuration</h4>
+                <CodeBlock
+                  code={`from astrolabe import AstrolabeClient
+from astrolabe.settings import AstrolabeSettings
+
+# Initialize with custom settings and subscribed projects
+settings = AstrolabeSettings(
+    api_url="https://api.astrolabe.com/flags",
+    poll_interval=30,  # seconds
+    request_timeout=15,  # seconds
+    max_retries=5,
+    enable_logging=True,
+    cache_ttl=600  # seconds
+)
+
+client = AstrolabeClient(
+    env='production',
+    settings=settings,
+    subscribed_projects=['ecommerce', 'analytics', 'user-service']
+)
+
+# Flag keys must follow 'project-key/flag-key' format
+if client.get_bool("ecommerce/new-checkout", False, {
+    "user_id": "1234",
+    "country": "US"
+}):
+    enable_new_checkout()
+
+# Get configuration from analytics project
+analytics_config = client.get_json("analytics/tracking-config", 
+    {"events": ["page_view"]},
+    {"user_id": "1234"}
+)`}
+                  language="python"
+                  id="python-advanced"
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="nodejs" className="space-y-4">
@@ -263,8 +302,133 @@ processPayment(paymentMethods);`}
                   id="nodejs-usage"
                 />
               </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Advanced Configuration</h4>
+                <CodeBlock
+                  code={`const { AstrolabeClient } = require("astrolabe");
+
+// Initialize with custom settings and subscribed projects
+const client = new AstrolabeClient('production', {
+  apiUrl: "https://api.astrolabe.com/flags",
+  pollInterval: 30,  // seconds
+  requestTimeout: 15,  // seconds
+  maxRetries: 5,
+  enableLogging: true,
+  cacheTtl: 600,  // seconds
+  
+  subscribedProjects: ['ecommerce', 'analytics', 'user-service']
+});
+
+const userAttributes = {
+  user_id: "1234",
+  country: "US"
+};
+
+if (client.get_bool("ecommerce/new-checkout", false, userAttributes)) {
+  enableNewCheckout();
+}
+
+const analyticsConfig = client.get_json("analytics/tracking-config", 
+  { events: ["page_view"] },
+  userAttributes
+);`}
+                  language="javascript"
+                  id="nodejs-advanced"
+                />
+              </div>
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Settings Reference */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code className="w-5 h-5" />
+            Settings Reference
+          </CardTitle>
+          <CardDescription>
+            Complete configuration options for both SDKs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-medium mb-3">Python SDK Settings</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">api_url</code>
+                  <span className="text-muted-foreground">API endpoint URL</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">poll_interval</code>
+                  <span className="text-muted-foreground">60s (polling frequency)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">request_timeout</code>
+                  <span className="text-muted-foreground">10s (HTTP timeout)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">max_retries</code>
+                  <span className="text-muted-foreground">3 (retry attempts)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">enable_logging</code>
+                  <span className="text-muted-foreground">true (debug logs)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">cache_ttl</code>
+                  <span className="text-muted-foreground">300s (cache lifetime)</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-3">Node.js SDK Settings</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">apiUrl</code>
+                  <span className="text-muted-foreground">API endpoint URL</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">pollInterval</code>
+                  <span className="text-muted-foreground">60s (polling frequency)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">requestTimeout</code>
+                  <span className="text-muted-foreground">10s (HTTP timeout)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">maxRetries</code>
+                  <span className="text-muted-foreground">3 (retry attempts)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">enableLogging</code>
+                  <span className="text-muted-foreground">true (debug logs)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">cacheTtl</code>
+                  <span className="text-muted-foreground">300s (cache lifetime)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Code className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-2">Project Subscription & Flag Keys</h4>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p><strong>Subscribed Projects:</strong> Configure which projects this client can access</p>
+                  <p><strong>Flag Key Format:</strong> All flags must follow <code className="bg-blue-100 px-1 rounded">project-key/flag-key</code> format</p>
+                  <p><strong>Validation:</strong> SDKs validate flag keys and project subscription automatically</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
