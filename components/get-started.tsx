@@ -544,41 +544,26 @@ const analyticsConfig = client.get_json("analytics/tracking-config",
               <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">2</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">Get API Key</span>
-                  <Badge variant="outline" className="text-xs">Required</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">Generate an API key from your project settings</p>
-                <Button variant="outline" size="sm" className="mt-2">
-                  <ExternalLink className="w-3 h-3 mr-1" />
-                  Generate API Key
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">3</div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">Initialize Client</span>
                   <Badge variant="outline" className="text-xs">Required</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Initialize the FeatureFlags client with your API key</p>
+                <p className="text-sm text-muted-foreground">Initialize the AstrolabeClient with your environment</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">4</div>
+              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">3</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">Use Flag Methods</span>
                   <Badge variant="secondary" className="text-xs">Easy</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Call <code className="bg-muted px-1 rounded text-xs">.is_enabled()</code> or <code className="bg-muted px-1 rounded text-xs">.get_value()</code> methods</p>
+                <p className="text-sm text-muted-foreground">Call <code className="bg-muted px-1 rounded text-xs">.get_bool()</code> or <code className="bg-muted px-1 rounded text-xs">.get_json()</code> methods</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">5</div>
+              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">4</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">Enjoy Blazing-Fast Evaluation</span>
@@ -601,50 +586,6 @@ const analyticsConfig = client.get_json("analytics/tracking-config",
         </CardContent>
       </Card>
 
-      {/* Additional Resources */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Additional Resources</CardTitle>
-          <CardDescription>
-            Dive deeper into advanced features and best practices
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">📚 Documentation</div>
-                <div className="text-sm text-muted-foreground">Complete API reference and guides</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">🎯 Best Practices</div>
-                <div className="text-sm text-muted-foreground">Learn from our feature flag experts</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">🔧 Advanced Targeting</div>
-                <div className="text-sm text-muted-foreground">Complex rules and percentage splits</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">💬 Community Support</div>
-                <div className="text-sm text-muted-foreground">Join our developer community</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
