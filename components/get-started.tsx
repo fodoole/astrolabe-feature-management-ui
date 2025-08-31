@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CheckCircle, Code, Download, Globe, Zap, Shield, Database, ArrowRight, Copy, ExternalLink, Cpu, Network, Clock } from 'lucide-react'
 import { useState } from "react"
 
 export function GetStarted() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const [selectedVersion, setSelectedVersion] = useState("v1.0.5")
 
   const copyToClipboard = (code: string, id: string) => {
     navigator.clipboard.writeText(code)
@@ -151,8 +153,21 @@ export function GetStarted() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <label className="text-sm font-medium mb-2 block">SDK Version</label>
+            <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select version" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="v1.0.5">v1.0.5</SelectItem>
+                <SelectItem value="v1.0.3">v1.0.3</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <Tabs defaultValue="python" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="python" className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-blue-500 rounded"></div>
                 Python
@@ -161,17 +176,13 @@ export function GetStarted() {
                 <div className="w-4 h-4 bg-green-500 rounded"></div>
                 Node.js
               </TabsTrigger>
-              <TabsTrigger value="api" className="flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                REST API
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="python" className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">Installation</h4>
                 <CodeBlock
-                  code="pip install astrolabe-python"
+                  code={`pip install git+https://github.com/fodoole/astrolabe-python-sdk.git@${selectedVersion}`}
                   language="bash"
                   id="python-install"
                 />
@@ -180,13 +191,13 @@ export function GetStarted() {
               <div>
                 <h4 className="font-medium mb-2">Basic Usage</h4>
                 <CodeBlock
-                  code={`from astrolabe import FeatureFlags
+                  code={`from astrolabe import AstrolabeClient
 
 # Initialize the client
-ff = FeatureFlags(api_key="your-api-key")
+client = AstrolabeClient('development')
 
-# Check if a feature is enabled
-if ff.is_enabled("new_checkout", user_attributes={
+# Check if a feature is enabled (boolean flag)
+if client.get_bool("new_checkout", False, {
     "user_id": "1234",
     "country": "US",
     "is_premium": True
@@ -196,9 +207,9 @@ else:
     render_old_checkout()
 
 # Get a feature value (for non-boolean flags)
-payment_methods = ff.get_value("payment_methods", 
-    user_attributes={"user_id": "1234"},
-    default_value=["credit_card"]
+payment_methods = client.get_json("payment_methods", 
+    ["credit_card"],
+    {"user_id": "1234"}
 )
 
 # Use the value
@@ -213,7 +224,7 @@ process_payment(payment_methods)`}
               <div>
                 <h4 className="font-medium mb-2">Installation</h4>
                 <CodeBlock
-                  code="npm install astrolabe-js"
+                  code={`npm install git+https://github.com/fodoole/astrolabe-nodejs-sdk.git@${selectedVersion}`}
                   language="bash"
                   id="nodejs-install"
                 />
@@ -222,70 +233,34 @@ process_payment(payment_methods)`}
               <div>
                 <h4 className="font-medium mb-2">Basic Usage</h4>
                 <CodeBlock
-                  code={`const { FeatureFlags } = require("astrolabe-js");
+                  code={`const { AstrolabeClient } = require("astrolabe");
 
 // Initialize the client
-const ff = new FeatureFlags({ apiKey: "your-api-key" });
+const client = new AstrolabeClient('development');
 
-// Check if a feature is enabled
+// Check if a feature is enabled (boolean flag)
 const userAttributes = {
   user_id: "1234",
   country: "US",
   is_premium: true
 };
 
-if (ff.isEnabled("new_checkout", userAttributes)) {
+if (client.get_bool("new_checkout", false, userAttributes)) {
   renderNewCheckout();
 } else {
   renderOldCheckout();
 }
 
 // Get a feature value (for non-boolean flags)
-const paymentMethods = ff.getValue("payment_methods", 
-  userAttributes, 
-  ["credit_card"] // default value
+const paymentMethods = client.get_json("payment_methods", 
+  ["credit_card"], // default value
+  userAttributes
 );
 
 // Use the value
 processPayment(paymentMethods);`}
                   language="javascript"
                   id="nodejs-usage"
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="api" className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Evaluate a Feature Flag</h4>
-                <CodeBlock
-                  code={`curl -X POST https://api.astrolabe.com/evaluate \\
-  -H "Authorization: Bearer your-api-key" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "flag": "new_checkout",
-    "attributes": {
-      "user_id": "1234",
-      "country": "US",
-      "is_premium": true
-    }
-  }'`}
-                  language="bash"
-                  id="api-curl"
-                />
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-2">Response</h4>
-                <CodeBlock
-                  code={`{
-  "flag": "new_checkout",
-  "value": true,
-  "reason": "matched_rule",
-  "rule_id": "premium_users",
-  "timestamp": "2024-01-15T10:30:00Z"
-}`}
-                  language="json"
-                  id="api-response"
                 />
               </div>
             </TabsContent>
