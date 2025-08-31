@@ -26,6 +26,7 @@ export interface SDKCondition {
   operator: string
   value?: unknown
   listValues?: unknown[]
+  modulusValue?: number
 }
 
 export function transformFlagToSDKFormat(flag: FeatureFlag): SDKFlagConfig {
@@ -59,6 +60,7 @@ function transformConditionToSDK(condition: RuleCondition): SDKCondition {
     attributeId: condition.attributeId,
     operator: condition.operator,
     value: condition.value,
-    listValues: condition.listValues
+    listValues: condition.listValues,
+    modulusValue: condition.modulusValue
   }
 }
