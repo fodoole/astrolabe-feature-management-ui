@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CheckCircle, Code, Download, Globe, Zap, Shield, Database, ArrowRight, Copy, ExternalLink, Cpu, Network, Clock } from 'lucide-react'
 import { useState } from "react"
 
 export function GetStarted() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
+  const [selectedVersion, setSelectedVersion] = useState("v1.0.5")
 
   const copyToClipboard = (code: string, id: string) => {
     navigator.clipboard.writeText(code)
@@ -151,8 +153,21 @@ export function GetStarted() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <label className="text-sm font-medium mb-2 block">SDK Version</label>
+            <Select value={selectedVersion} onValueChange={setSelectedVersion}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select version" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="v1.0.5">v1.0.5</SelectItem>
+                <SelectItem value="v1.0.3">v1.0.3</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
           <Tabs defaultValue="python" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="python" className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-blue-500 rounded"></div>
                 Python
@@ -161,17 +176,13 @@ export function GetStarted() {
                 <div className="w-4 h-4 bg-green-500 rounded"></div>
                 Node.js
               </TabsTrigger>
-              <TabsTrigger value="api" className="flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                REST API
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="python" className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">Installation</h4>
                 <CodeBlock
-                  code="pip install astrolabe-python"
+                  code={`pip install git+https://github.com/fodoole/astrolabe-python-sdk.git@${selectedVersion}`}
                   language="bash"
                   id="python-install"
                 />
@@ -180,13 +191,13 @@ export function GetStarted() {
               <div>
                 <h4 className="font-medium mb-2">Basic Usage</h4>
                 <CodeBlock
-                  code={`from astrolabe import FeatureFlags
+                  code={`from astrolabe import AstrolabeClient
 
 # Initialize the client
-ff = FeatureFlags(api_key="your-api-key")
+client = AstrolabeClient('development')
 
-# Check if a feature is enabled
-if ff.is_enabled("new_checkout", user_attributes={
+# Check if a feature is enabled (boolean flag)
+if client.get_bool("new_checkout", False, {
     "user_id": "1234",
     "country": "US",
     "is_premium": True
@@ -196,9 +207,9 @@ else:
     render_old_checkout()
 
 # Get a feature value (for non-boolean flags)
-payment_methods = ff.get_value("payment_methods", 
-    user_attributes={"user_id": "1234"},
-    default_value=["credit_card"]
+payment_methods = client.get_json("payment_methods", 
+    ["credit_card"],
+    {"user_id": "1234"}
 )
 
 # Use the value
@@ -207,13 +218,52 @@ process_payment(payment_methods)`}
                   id="python-usage"
                 />
               </div>
+              
+              <div>
+                <h4 className="font-medium mb-2">Advanced Configuration</h4>
+                <CodeBlock
+                  code={`from astrolabe import AstrolabeClient
+from astrolabe.settings import AstrolabeSettings
+
+# Initialize with custom settings and subscribed projects
+settings = AstrolabeSettings(
+    api_url="https://api.astrolabe.com/flags",
+    poll_interval=30,  # seconds
+    request_timeout=15,  # seconds
+    max_retries=5,
+    enable_logging=True,
+    cache_ttl=600  # seconds
+)
+
+client = AstrolabeClient(
+    env='production',
+    settings=settings,
+    subscribed_projects=['ecommerce', 'analytics', 'user-service']
+)
+
+# Flag keys must follow 'project-key/flag-key' format
+if client.get_bool("ecommerce/new-checkout", False, {
+    "user_id": "1234",
+    "country": "US"
+}):
+    enable_new_checkout()
+
+# Get configuration from analytics project
+analytics_config = client.get_json("analytics/tracking-config", 
+    {"events": ["page_view"]},
+    {"user_id": "1234"}
+)`}
+                  language="python"
+                  id="python-advanced"
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="nodejs" className="space-y-4">
               <div>
                 <h4 className="font-medium mb-2">Installation</h4>
                 <CodeBlock
-                  code="npm install astrolabe-js"
+                  code={`npm install git+https://github.com/fodoole/astrolabe-nodejs-sdk.git@${selectedVersion}`}
                   language="bash"
                   id="nodejs-install"
                 />
@@ -222,28 +272,28 @@ process_payment(payment_methods)`}
               <div>
                 <h4 className="font-medium mb-2">Basic Usage</h4>
                 <CodeBlock
-                  code={`const { FeatureFlags } = require("astrolabe-js");
+                  code={`const { AstrolabeClient } = require("astrolabe");
 
 // Initialize the client
-const ff = new FeatureFlags({ apiKey: "your-api-key" });
+const client = new AstrolabeClient('development');
 
-// Check if a feature is enabled
+// Check if a feature is enabled (boolean flag)
 const userAttributes = {
   user_id: "1234",
   country: "US",
   is_premium: true
 };
 
-if (ff.isEnabled("new_checkout", userAttributes)) {
+if (client.get_bool("new_checkout", false, userAttributes)) {
   renderNewCheckout();
 } else {
   renderOldCheckout();
 }
 
 // Get a feature value (for non-boolean flags)
-const paymentMethods = ff.getValue("payment_methods", 
-  userAttributes, 
-  ["credit_card"] // default value
+const paymentMethods = client.get_json("payment_methods", 
+  ["credit_card"], // default value
+  userAttributes
 );
 
 // Use the value
@@ -252,44 +302,133 @@ processPayment(paymentMethods);`}
                   id="nodejs-usage"
                 />
               </div>
-            </TabsContent>
-
-            <TabsContent value="api" className="space-y-4">
-              <div>
-                <h4 className="font-medium mb-2">Evaluate a Feature Flag</h4>
-                <CodeBlock
-                  code={`curl -X POST https://api.astrolabe.com/evaluate \\
-  -H "Authorization: Bearer your-api-key" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "flag": "new_checkout",
-    "attributes": {
-      "user_id": "1234",
-      "country": "US",
-      "is_premium": true
-    }
-  }'`}
-                  language="bash"
-                  id="api-curl"
-                />
-              </div>
               
               <div>
-                <h4 className="font-medium mb-2">Response</h4>
+                <h4 className="font-medium mb-2">Advanced Configuration</h4>
                 <CodeBlock
-                  code={`{
-  "flag": "new_checkout",
-  "value": true,
-  "reason": "matched_rule",
-  "rule_id": "premium_users",
-  "timestamp": "2024-01-15T10:30:00Z"
-}`}
-                  language="json"
-                  id="api-response"
+                  code={`const { AstrolabeClient } = require("astrolabe");
+
+// Initialize with custom settings and subscribed projects
+const client = new AstrolabeClient('production', {
+  apiUrl: "https://api.astrolabe.com/flags",
+  pollInterval: 30,  // seconds
+  requestTimeout: 15,  // seconds
+  maxRetries: 5,
+  enableLogging: true,
+  cacheTtl: 600,  // seconds
+  
+  subscribedProjects: ['ecommerce', 'analytics', 'user-service']
+});
+
+const userAttributes = {
+  user_id: "1234",
+  country: "US"
+};
+
+if (client.get_bool("ecommerce/new-checkout", false, userAttributes)) {
+  enableNewCheckout();
+}
+
+const analyticsConfig = client.get_json("analytics/tracking-config", 
+  { events: ["page_view"] },
+  userAttributes
+);`}
+                  language="javascript"
+                  id="nodejs-advanced"
                 />
               </div>
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Settings Reference */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Code className="w-5 h-5" />
+            Settings Reference
+          </CardTitle>
+          <CardDescription>
+            Complete configuration options for both SDKs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-medium mb-3">Python SDK Settings</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">api_url</code>
+                  <span className="text-muted-foreground">API endpoint URL</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">poll_interval</code>
+                  <span className="text-muted-foreground">60s (polling frequency)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">request_timeout</code>
+                  <span className="text-muted-foreground">10s (HTTP timeout)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">max_retries</code>
+                  <span className="text-muted-foreground">3 (retry attempts)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">enable_logging</code>
+                  <span className="text-muted-foreground">true (debug logs)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">cache_ttl</code>
+                  <span className="text-muted-foreground">300s (cache lifetime)</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-3">Node.js SDK Settings</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">apiUrl</code>
+                  <span className="text-muted-foreground">API endpoint URL</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">pollInterval</code>
+                  <span className="text-muted-foreground">60s (polling frequency)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">requestTimeout</code>
+                  <span className="text-muted-foreground">10s (HTTP timeout)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">maxRetries</code>
+                  <span className="text-muted-foreground">3 (retry attempts)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">enableLogging</code>
+                  <span className="text-muted-foreground">true (debug logs)</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="bg-muted px-2 py-1 rounded">cacheTtl</code>
+                  <span className="text-muted-foreground">300s (cache lifetime)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <Code className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-2">Project Subscription & Flag Keys</h4>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p><strong>Subscribed Projects:</strong> Configure which projects this client can access</p>
+                  <p><strong>Flag Key Format:</strong> All flags must follow <code className="bg-blue-100 px-1 rounded">project-key/flag-key</code> format</p>
+                  <p><strong>Validation:</strong> SDKs validate flag keys and project subscription automatically</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -405,41 +544,26 @@ processPayment(paymentMethods);`}
               <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">2</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium">Get API Key</span>
-                  <Badge variant="outline" className="text-xs">Required</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">Generate an API key from your project settings</p>
-                <Button variant="outline" size="sm" className="mt-2">
-                  <ExternalLink className="w-3 h-3 mr-1" />
-                  Generate API Key
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">3</div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">Initialize Client</span>
                   <Badge variant="outline" className="text-xs">Required</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Initialize the FeatureFlags client with your API key</p>
+                <p className="text-sm text-muted-foreground">Initialize the AstrolabeClient with your environment</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">4</div>
+              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">3</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">Use Flag Methods</span>
                   <Badge variant="secondary" className="text-xs">Easy</Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">Call <code className="bg-muted px-1 rounded text-xs">.is_enabled()</code> or <code className="bg-muted px-1 rounded text-xs">.get_value()</code> methods</p>
+                <p className="text-sm text-muted-foreground">Call <code className="bg-muted px-1 rounded text-xs">.get_bool()</code> or <code className="bg-muted px-1 rounded text-xs">.get_json()</code> methods</p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">5</div>
+              <div className="w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-sm font-medium mt-0.5">4</div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-medium">Enjoy Blazing-Fast Evaluation</span>
@@ -462,50 +586,6 @@ processPayment(paymentMethods);`}
         </CardContent>
       </Card>
 
-      {/* Additional Resources */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Additional Resources</CardTitle>
-          <CardDescription>
-            Dive deeper into advanced features and best practices
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-4">
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">📚 Documentation</div>
-                <div className="text-sm text-muted-foreground">Complete API reference and guides</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">🎯 Best Practices</div>
-                <div className="text-sm text-muted-foreground">Learn from our feature flag experts</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">🔧 Advanced Targeting</div>
-                <div className="text-sm text-muted-foreground">Complex rules and percentage splits</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-
-            <Button variant="outline" className="justify-start h-auto p-4">
-              <div className="text-left">
-                <div className="font-medium">💬 Community Support</div>
-                <div className="text-sm text-muted-foreground">Join our developer community</div>
-              </div>
-              <ExternalLink className="w-4 h-4 ml-auto" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
