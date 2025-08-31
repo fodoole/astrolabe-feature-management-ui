@@ -220,6 +220,40 @@ process_payment(payment_methods)`}
               </div>
               
               <div>
+                <h4 className="font-medium mb-2">Project Subscription Behavior</h4>
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-800 space-y-2">
+                    <p><strong>Default Behavior (No subscribed_projects):</strong> The SDK will fetch flags from all projects that your API key has access to.</p>
+                    <p><strong>Security-Focused (With subscribed_projects):</strong> The SDK will only fetch flags from the specified projects.</p>
+                  </div>
+                </div>
+                <CodeBlock
+                  code={`from astrolabe import AstrolabeClient
+
+# Fetch flags from ALL projects (new default behavior)
+client = AstrolabeClient('production')
+
+# Security-focused: only fetch from specific projects
+client_restricted = AstrolabeClient('production', 
+    subscribed_projects=['ecommerce', 'user-service'])
+
+# Both clients work the same way for flag evaluation
+feature_enabled = client.get_bool("ecommerce/new-checkout", False, {
+    "user_id": "1234",
+    "country": "US"
+})
+
+# The restricted client will only have flags from subscribed projects
+restricted_feature = client_restricted.get_bool("ecommerce/new-checkout", False, {
+    "user_id": "1234", 
+    "country": "US"
+})`}
+                  language="python"
+                  id="python-subscription-behavior"
+                />
+              </div>
+              
+              <div>
                 <h4 className="font-medium mb-2">Advanced Configuration</h4>
                 <CodeBlock
                   code={`from astrolabe import AstrolabeClient
@@ -420,9 +454,10 @@ const analyticsConfig = client.get_json("analytics/tracking-config",
             <div className="flex items-start gap-3">
               <Code className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
-                <h4 className="font-medium text-blue-900 mb-2">Project Subscription & Flag Keys</h4>
+                <h4 className="font-medium text-blue-900 mb-2">Project Subscription & Security</h4>
                 <div className="text-sm text-blue-800 space-y-1">
-                  <p><strong>Subscribed Projects:</strong> Configure which projects this client can access</p>
+                  <p><strong>Default Behavior:</strong> When no subscribed_projects are specified, the SDK fetches flags from all projects your API key can access</p>
+                  <p><strong>Production Recommendation:</strong> Use subscribed_projects to restrict access to specific projects for better security isolation</p>
                   <p><strong>Flag Key Format:</strong> All flags must follow <code className="bg-blue-100 px-1 rounded">project-key/flag-key</code> format</p>
                   <p><strong>Validation:</strong> SDKs validate flag keys and project subscription automatically</p>
                 </div>
