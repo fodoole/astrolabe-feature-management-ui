@@ -22,11 +22,12 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'google' && user.email) {
-        // Check if user is a member of allowed Google Groups
-        const isAuthorized = await checkGroupMembership(user.email)
+        const { getUserGoogleGroups } = await import('@/lib/google-groups')
+        const userGroups = await getUserGoogleGroups(user.email)
+        
+        const isAuthorized = userGroups.length > 0
         
         if (!isAuthorized) {
-          // Redirect to unauthorized page
           return '/auth/unauthorized'
         }
         
@@ -36,7 +37,8 @@ export const authOptions: NextAuthOptions = {
             email: user.email,
             avatar_url: user.image || null,
             provider: 'google',
-            provider_id: profile?.sub || account.providerAccountId || ''
+            provider_id: profile?.sub || account.providerAccountId || '',
+            google_groups: userGroups
           })
         } catch (error) {
           console.error('Failed to sync user with backend:', error)
