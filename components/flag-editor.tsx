@@ -95,32 +95,32 @@ export function FlagEditor({
         const flagDefinition = await getFlagDefinition(project.key, currentFlag.key)
         
         console.log('Flag definition fetched:', flagDefinition)
-        
+        const allEnvironments: Environment[] = ["development", "staging", "production"]
+
         // Update the local flag with the fetched definition
-        setLocalFlags(prevFlags => 
+        setLocalFlags(prevFlags =>
           prevFlags.map(flag => {
             if (flag.id === selectedFlag) {
-              // Transform the API response to our internal format
-              const updatedEnvironments = flagDefinition.environments?.map(env => ({
-                environment: env.environment as Environment,
-                enabled: env.enabled,
-                defaultValue: env.defaultValue,
-                rules: env.rules?.map(rule => ({
-                  id: rule.id || `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                  name: rule.name || 'Unnamed Rule',
-                  conditions: rule.conditions || [],
-                  logicalOperator: (rule.logicalOperator || 'AND') as LogicalOperator,
-                  returnValue: rule.returnValue,
-                  enabled: rule.enabled !== false,
-                  trafficSplits: []
-                })) || [],
-                trafficSplits: []
-              })) || flag.environments
-
-              return {
-                ...flag,
-                environments: updatedEnvironments
-              }
+              let updatedEnvironments = flag.environments ?? []
+        
+              // Ensure all envs exist
+              allEnvironments.forEach(envName => {
+                if (!updatedEnvironments.some(env => env.environment === envName)) {
+                  updatedEnvironments.push({
+                    environment: envName,
+                    enabled: false,
+                    defaultValue:
+                      flag.dataType === "boolean" ? false :
+                      flag.dataType === "string" ? "" :
+                      flag.dataType === "number" ? 0 :
+                      flag.dataType === "json" ? {} : null,
+                    rules: [],
+                    trafficSplits: []
+                  })
+                }
+              })
+        
+              return { ...flag, environments: updatedEnvironments }
             }
             return flag
           })
@@ -462,6 +462,12 @@ export function FlagEditor({
     return String(value)
   }
 
+  const handleDiscardChanges = () => {
+    // Reset local flags to the original flags state
+    setLocalFlags(flags)
+    setHasUnsavedChanges(false)
+  }
+
   const handleSaveChanges = async () => {
     if (!currentFlag || !selectedProject) return
     
@@ -621,14 +627,22 @@ export function FlagEditor({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             You have unsaved changes. Click Save to persist your changes.
-            <Button 
-              onClick={handleSaveChanges} 
-              disabled={isSaving}
-              className="ml-2"
-              size="sm"
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
+            <div className="flex gap-2 mt-2">
+              <Button 
+                onClick={handleSaveChanges} 
+                disabled={isSaving}
+                size="sm"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button 
+                onClick={handleDiscardChanges}
+                variant="outline"
+                size="sm"
+              >
+                Discard
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -945,6 +959,7 @@ export function FlagEditor({
             flag={currentFlag}
             environment={selectedEnvironment}
             attributes={attributes}
+            hasUnsavedChanges={hasUnsavedChanges}
           />
 
           <EditRuleModal
