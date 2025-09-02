@@ -4,6 +4,7 @@ interface UserSyncData {
   avatar_url: string | null
   provider: string
   provider_id: string
+  google_groups?: string[]
 }
 
 export async function syncUserWithBackend(userData: UserSyncData) {
