@@ -617,3 +617,51 @@ export async function updateTeamMembers(
     })
   }
 }
+
+// Flag evaluation interfaces
+export interface FlagEvaluationResult {
+  value: any
+  matchedRule?: string
+  timestamp: string
+}
+
+// Evaluate a live flag using the existing flag endpoint
+export async function evaluateLiveFlag(
+  projectKey: string,
+  flagKey: string,
+  environment: string,
+  attributes: Record<string, any>
+): Promise<FlagEvaluationResult> {
+  const response = await apiRequest<FlagEvaluationResult>(
+    `/feature-flags/${projectKey}/${flagKey}/evaluate/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        environment,
+        attributes
+      })
+    }
+  )
+  return response
+}
+
+// Evaluate flag with unsaved changes using the project-level endpoint
+export async function evaluateFlagWithChanges(
+  projectKey: string,
+  flag: any,
+  environment: string,
+  attributes: Record<string, any>
+): Promise<FlagEvaluationResult> {
+  const response = await apiRequest<FlagEvaluationResult>(
+    `/feature-flags/${projectKey}/evaluate/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        flag,
+        environment,
+        attributes
+      })
+    }
+  )
+  return response
+}

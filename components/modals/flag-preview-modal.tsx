@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Play, RefreshCw, User, Code, AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { evaluateLiveFlag, evaluateFlagWithChanges, type FlagEvaluationResult } from "../../lib/api-services"
 import type { FeatureFlag, GlobalAttribute, Environment, EnvironmentConfig } from "../../types"
 
 interface FlagPreviewModalProps {
@@ -25,11 +26,12 @@ interface FlagPreviewModalProps {
   environment: Environment
   attributes: GlobalAttribute[]
   hasUnsavedChanges?: boolean
+  projectKey?: string
 }
 
-export function FlagPreviewModal({ open, onOpenChange, flag, environment, attributes, hasUnsavedChanges = false }: FlagPreviewModalProps) {
+export function FlagPreviewModal({ open, onOpenChange, flag, environment, attributes, hasUnsavedChanges = false, projectKey }: FlagPreviewModalProps) {
   const [userAttributes, setUserAttributes] = useState<Record<string, any>>({})
-  const [evaluationResult, setEvaluationResult] = useState<any>(null)
+  const [evaluationResult, setEvaluationResult] = useState<FlagEvaluationResult | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>(environment)
 
@@ -94,57 +96,47 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
   }
 
   const evaluateFlag = async () => {
-    if (!environmentConfig) return
+    if (!environmentConfig || !projectKey) return
 
     setIsEvaluating(true)
     
     try {
-      // Use the API proxy to evaluate the flag
-      const response = await fetch('/api/proxy/feature-flags/evaluate/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          flag: {
-            key: flag.key,
-            name: flag.name,
-            dataType: flag.dataType,
-            environments: [{
-              environment: selectedEnvironment,
-              enabled: environmentConfig.enabled,
-              defaultValue: environmentConfig.defaultValue,
-              rules: environmentConfig.rules || []
-            }]
-          },
-          environment: selectedEnvironment,
-          attributes: userAttributes
-        })
+      // Convert attribute IDs to attribute keys for API call
+      const userAttributesWithKeys: Record<string, any> = {}
+      Object.entries(userAttributes).forEach(([attributeId, value]) => {
+        const attribute = attributes.find(attr => attr.id === attributeId)
+        if (attribute) {
+          userAttributesWithKeys[attribute.name] = value
+        }
       })
-
-      if (response.ok) {
-        const data = await response.json()
-        setEvaluationResult({
-          value: data.result,
-          reason: data.reason || "api_evaluation",
-          matchedRule: data.matchedRule || null,
-          timestamp: new Date().toISOString()
-        })
+      
+      let result: FlagEvaluationResult
+      
+      if (hasUnsavedChanges) {
+        // Use project-level endpoint for unsaved changes
+        const flagData = {
+          key: flag.key,
+          name: flag.name,
+          dataType: flag.dataType,
+          environments: [{
+            environment: selectedEnvironment,
+            enabled: environmentConfig.enabled,
+            defaultValue: environmentConfig.defaultValue,
+            rules: environmentConfig.rules || []
+          }]
+        }
+        result = await evaluateFlagWithChanges(projectKey, flagData, selectedEnvironment, userAttributesWithKeys)
       } else {
-        console.error('API evaluation failed:', response.status, response.statusText)
-        setEvaluationResult({
-          value: null,
-          reason: "evaluation_failed",
-          error: `API request failed with status ${response.status}`,
-          timestamp: new Date().toISOString()
-        })
+        // Use flag-specific endpoint for live flags
+        result = await evaluateLiveFlag(projectKey, flag.key, selectedEnvironment, userAttributesWithKeys)
       }
+      
+      setEvaluationResult(result)
     } catch (error) {
       console.error('Flag evaluation error:', error)
       setEvaluationResult({
         value: null,
-        reason: "evaluation_error",
-        error: error instanceof Error ? error.message : 'Unknown error',
+        matchedRule: undefined,
         timestamp: new Date().toISOString()
       })
     } finally {
@@ -284,25 +276,13 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                   <CardTitle className="text-lg">Evaluation Result</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Returned Value</Label>
-                      <div className="font-mono text-lg p-2 bg-muted rounded">
-                        {JSON.stringify(evaluationResult.value)}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Reason</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={
-                          evaluationResult.reason === "matched_rule" ? "default" :
-                          evaluationResult.reason === "traffic_split" ? "secondary" :
-                          evaluationResult.reason === "flag_disabled" ? "destructive" :
-                          evaluationResult.reason === "evaluation_failed" || evaluationResult.reason === "evaluation_error" ? "destructive" : "outline"
-                        }>
-                          {evaluationResult.reason.replace('_', ' ')}
-                        </Badge>
-                      </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Returned Value</Label>
+                    <div className="font-mono text-lg p-2 bg-muted rounded">
+                      {flag.dataType === 'json' ? 
+                        JSON.stringify(evaluationResult.value, null, 2) : 
+                        JSON.stringify(evaluationResult.value)
+                      }
                     </div>
                   </div>
 
@@ -339,7 +319,7 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
               <div>
                 <Label className="text-sm font-medium mb-2 block">Python SDK</Label>
                 <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono">
-                  <pre>{`# Get boolean flag value
+                  <pre>{`${flag.dataType === 'boolean' ? `# Get boolean flag value
 value = ff.get_bool("${flag.key}", 
     user_attributes={
         ${Object.entries(userAttributes).map(([key, value]) => {
@@ -348,16 +328,34 @@ value = ff.get_bool("${flag.key}",
         }).join(',\n        ')}
     },
     default_value=${JSON.stringify(environmentConfig?.defaultValue)}
-)
-
-# Get string flag value
-value = ff.get_string("${flag.key}", user_attributes, "default")
-
-# Get number flag value  
-value = ff.get_number("${flag.key}", user_attributes, 0)
-
-# Get JSON flag value
-value = ff.get_json("${flag.key}", user_attributes, {})`}</pre>
+)` : flag.dataType === 'string' ? `# Get string flag value
+value = ff.get_string("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
+    default_value=${JSON.stringify(environmentConfig?.defaultValue)}
+)` : flag.dataType === 'number' ? `# Get number flag value
+value = ff.get_number("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
+    default_value=${JSON.stringify(environmentConfig?.defaultValue)}
+)` : `# Get JSON flag value
+value = ff.get_json("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
+    default_value=${JSON.stringify(environmentConfig?.defaultValue)}
+)`}`}</pre>
                 </div>
               </div>
 

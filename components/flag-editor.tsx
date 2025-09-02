@@ -960,6 +960,7 @@ export function FlagEditor({
             environment={selectedEnvironment}
             attributes={attributes}
             hasUnsavedChanges={hasUnsavedChanges}
+            projectKey={selectedProjectData?.key}
           />
 
           <EditRuleModal
