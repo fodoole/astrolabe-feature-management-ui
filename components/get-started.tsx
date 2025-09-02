@@ -182,7 +182,7 @@ export function GetStarted() {
               <div>
                 <h4 className="font-medium mb-2">Installation</h4>
                 <CodeBlock
-                  code={`pip install git+https://github.com/fodoole/astrolabe-python-sdk.git@${selectedVersion}`}
+                  code="pip install astrolabe-python-sdk"
                   language="bash"
                   id="python-install"
                 />
