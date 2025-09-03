@@ -82,11 +82,15 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
   const url = `${API_BASE_URL}/${path}${path.endsWith('/') ? '' : '/'}${queryString ? `?${queryString}` : ''}`
 
   // Prepare headers
-  // You can forward some headers from the incoming request if needed.
-  // Keep it minimal to avoid CORS/auth surprises.
   const fetchHeaders: HeadersInit = {
-    Accept: 'application/json', // prefer JSON; FastAPI will send proper Content-Type
+    Accept: 'application/json',
     'Content-Type': 'application/json',
+  }
+  
+  // Forward Authorization header if present
+  const authHeader = request.headers.get('authorization')
+  if (authHeader) {
+    fetchHeaders['Authorization'] = authHeader
   }
 
   // Body (only for POST/PATCH)

@@ -46,13 +46,40 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile, user }) {
       if (account) {
         token.accessToken = account.access_token
+        
+        if (user?.email) {
+          try {
+            const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const response = await fetch(`${backendUrl}/api/v1/users/me/roles`, {
+              headers: {
+                'Authorization': `Bearer ${token.accessToken}`,
+                'Content-Type': 'application/json',
+              },
+            })
+            
+            if (response.ok) {
+              const userWithRoles = await response.json()
+              token.roles = userWithRoles.global_role
+              token.permissions = userWithRoles.permissions
+              token.google_groups = userWithRoles.google_groups
+            }
+          } catch (error) {
+            console.error('Failed to fetch user roles:', error)
+          }
+        }
       }
       return token
     },
     async session({ session, token }) {
+      session.accessToken = token.accessToken as string
+      if (session.user) {
+        session.user.roles = token.roles as string
+        session.user.permissions = token.permissions as any
+        session.user.google_groups = token.google_groups as string[]
+      }
       return session
     },
   },
