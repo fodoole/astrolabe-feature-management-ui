@@ -82,3 +82,53 @@ export async function apiRequest<T>(
     throw new ApiError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
+
+export async function authenticatedApiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  if (typeof window === 'undefined') {
+    throw new ApiError('authenticatedApiRequest can only be used on the client side')
+  }
+  
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+  
+  const url = `${API_BASE_URL}${endpoint}`
+  
+  const defaultHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }
+  
+  if (session?.accessToken) {
+    defaultHeaders['Authorization'] = `Bearer ${session.accessToken}`
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new ApiError(
+        `API request failed: ${response.status} ${response.statusText}`,
+        response.status,
+        errorText
+      )
+    }
+
+    const data = await response.json()
+    return transformKeys(data) as T
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error
+    }
+    throw new ApiError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
