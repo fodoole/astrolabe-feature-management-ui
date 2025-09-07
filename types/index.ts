@@ -59,6 +59,7 @@ export interface GlobalAttribute {
   type: AttributeType
   description?: string
   possibleValues?: string[] // For enum-like attributes
+  project_id?: string
 }
 
 export interface RuleCondition {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,9 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Play, RefreshCw, User, Code } from 'lucide-react'
+import { Play, RefreshCw, User, Code, AlertTriangle } from 'lucide-react'
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { evaluateLiveFlag, evaluateFlagWithChanges, type FlagEvaluationResult } from "../../lib/api-services"
 import type { FeatureFlag, GlobalAttribute, Environment, EnvironmentConfig } from "../../types"
 
 interface FlagPreviewModalProps {
@@ -23,16 +25,54 @@ interface FlagPreviewModalProps {
   flag: FeatureFlag | null
   environment: Environment
   attributes: GlobalAttribute[]
+  hasUnsavedChanges?: boolean
+  projectKey?: string
 }
 
-export function FlagPreviewModal({ open, onOpenChange, flag, environment, attributes }: FlagPreviewModalProps) {
+export function FlagPreviewModal({ open, onOpenChange, flag, environment, attributes, hasUnsavedChanges = false, projectKey }: FlagPreviewModalProps) {
   const [userAttributes, setUserAttributes] = useState<Record<string, any>>({})
-  const [evaluationResult, setEvaluationResult] = useState<any>(null)
+  const [evaluationResult, setEvaluationResult] = useState<FlagEvaluationResult | null>(null)
   const [isEvaluating, setIsEvaluating] = useState(false)
+  const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>(environment)
+
+  // Clear evaluation result when environment changes
+  useEffect(() => {
+    setEvaluationResult(null)
+  }, [selectedEnvironment])
+
+  // Clear evaluation result when modal closes
+  useEffect(() => {
+    if (!open) {
+      setEvaluationResult(null)
+    }
+  }, [open])
 
   if (!flag) return null
 
-  const environmentConfig = flag.environments.find(env => env.environment === environment)
+  const environmentConfig = flag.environments.find(env => env.environment === selectedEnvironment)
+  
+  // Get attributes used in rules for the selected environment
+  const getRelevantAttributes = () => {
+    if (!environmentConfig?.rules || environmentConfig.rules.length === 0) {
+      return [] // Show no attributes when no rules exist
+    }
+    
+    const usedAttributeIds = new Set<string>()
+    environmentConfig.rules.forEach(rule => {
+      rule.conditions.forEach(condition => {
+        usedAttributeIds.add(condition.attributeId)
+      })
+    })
+    
+    // If no attributes are used in conditions, show no attributes
+    if (usedAttributeIds.size === 0) {
+      return []
+    }
+    
+    return attributes.filter(attr => usedAttributeIds.has(attr.id))
+  }
+  
+  const relevantAttributes = getRelevantAttributes()
   
   const handleAttributeChange = (attributeId: string, value: string) => {
     const attribute = attributes.find(attr => attr.id === attributeId)
@@ -56,138 +96,54 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
   }
 
   const evaluateFlag = async () => {
-    if (!environmentConfig) return
+    if (!environmentConfig || !projectKey) return
 
     setIsEvaluating(true)
     
-    // Simulate flag evaluation logic
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    let result = {
-      value: environmentConfig.defaultValue,
-      reason: "default_value",
-      matchedRule: null as any,
-      timestamp: new Date().toISOString()
-    }
-
-    // Check rules in order
-    if (environmentConfig.rules && environmentConfig.enabled) {
-      for (const rule of environmentConfig.rules) {
-        if (!rule.enabled) continue
-
-        let ruleMatches = true
-        let matchDetails: any[] = []
-
-        // Evaluate conditions
-        for (const condition of rule.conditions) {
-          const attribute = attributes.find(attr => attr.id === condition.attributeId)
-          const userValue = userAttributes[condition.attributeId]
-          
-          let conditionMatches = false
-          let conditionDetail = {
-            attribute: attribute?.name || "unknown",
-            operator: condition.operator,
-            expectedValue: condition.value,
-            actualValue: userValue,
-            matches: false
-          }
-
-          if (userValue !== undefined) {
-            switch (condition.operator) {
-              case "equals":
-                conditionMatches = userValue === condition.value
-                break
-              case "not_equals":
-                conditionMatches = userValue !== condition.value
-                break
-              case "greater_than":
-                conditionMatches = Number(userValue) > Number(condition.value)
-                break
-              case "less_than":
-                conditionMatches = Number(userValue) < Number(condition.value)
-                break
-              case "contains":
-                conditionMatches = String(userValue).includes(String(condition.value))
-                break
-              case "in":
-                if (condition.listValues) {
-                  conditionMatches = condition.listValues.includes(String(userValue))
-                }
-                break
-              case "not_in":
-                if (condition.listValues) {
-                  conditionMatches = !condition.listValues.includes(String(userValue))
-                }
-                break
-              case "modulus_equals":
-                if (condition.modulusValue) {
-                  const remainder = Number(userValue) % condition.modulusValue
-                  conditionMatches = remainder === Number(condition.value)
-                  conditionDetail.expectedValue = `% ${condition.modulusValue} = ${condition.value}`
-                  conditionDetail.actualValue = `${userValue} % ${condition.modulusValue} = ${remainder}`
-                }
-                break
-            }
-          }
-
-          conditionDetail.matches = conditionMatches
-          matchDetails.push(conditionDetail)
-
-          if (rule.logicalOperator === "AND" && !conditionMatches) {
-            ruleMatches = false
-            break
-          } else if (rule.logicalOperator === "OR" && conditionMatches) {
-            ruleMatches = true
-          }
+    try {
+      // Convert attribute IDs to attribute keys for API call
+      const userAttributesWithKeys: Record<string, any> = {}
+      Object.entries(userAttributes).forEach(([attributeId, value]) => {
+        const attribute = attributes.find(attr => attr.id === attributeId)
+        if (attribute) {
+          userAttributesWithKeys[attribute.name] = value
         }
-
-        if (rule.logicalOperator === "OR" && rule.conditions.length > 0) {
-          ruleMatches = matchDetails.some(detail => detail.matches)
+      })
+      
+      let result: FlagEvaluationResult
+      
+      if (hasUnsavedChanges) {
+        // Use project-level endpoint for unsaved changes
+        const flagData = {
+          key: flag.key,
+          name: flag.name,
+          dataType: flag.dataType,
+          environments: [{
+            environment: selectedEnvironment,
+            enabled: environmentConfig.enabled,
+            defaultValue: environmentConfig.defaultValue,
+            rules: environmentConfig.rules || []
+          }]
         }
-
-        // If no conditions, rule always matches (default rule)
-        if (rule.conditions.length === 0) {
-          ruleMatches = true
-        }
-
-        if (ruleMatches) {
-          result.matchedRule = {
-            name: rule.name,
-            conditions: matchDetails
-          }
-
-          // Handle traffic splits vs simple return value
-          if (rule.trafficSplits && rule.trafficSplits.length > 0) {
-            // Use user_id for consistent traffic splitting
-            const userId = userAttributes["5"] || userAttributes["user_id"] || 0
-            const hash = Math.abs(Number(userId)) % 100
-            
-            let cumulativePercentage = 0
-            for (const split of rule.trafficSplits) {
-              cumulativePercentage += split.percentage
-              if (hash < cumulativePercentage) {
-                result.value = split.value
-                result.reason = "traffic_split"
-                break
-              }
-            }
-          } else {
-            result.value = rule.returnValue
-            result.reason = "matched_rule"
-          }
-          break
-        }
+        result = await evaluateFlagWithChanges(projectKey, flagData, selectedEnvironment, userAttributesWithKeys)
+      } else {
+        // Use flag-specific endpoint for live flags
+        result = await evaluateLiveFlag(projectKey, flag.key, selectedEnvironment, userAttributesWithKeys)
       }
+      
+      setEvaluationResult(result)
+    } catch (error) {
+      console.error('Flag evaluation error:', error)
+      setEvaluationResult({
+        value: null,
+        matchedRule: undefined,
+        timestamp: new Date().toISOString()
+      })
+    } finally {
+      setIsEvaluating(false)
     }
-
-    if (!environmentConfig.enabled) {
-      result.reason = "flag_disabled"
-      result.value = environmentConfig.defaultValue
-    }
-
-    setEvaluationResult(result)
-    setIsEvaluating(false)
   }
+
 
   const presetUsers = [
     {
@@ -213,9 +169,19 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
             Preview: {flag.name}
           </DialogTitle>
           <DialogDescription>
-            Test how this flag evaluates for different user attributes in {environment}
+            Test how this flag evaluates for different user attributes
           </DialogDescription>
         </DialogHeader>
+        
+        {/* Unsaved Changes Warning */}
+        {hasUnsavedChanges && (
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              <strong>Warning:</strong> This preview is using unsaved changes. Close this modal and discard changes to see the live version.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="test" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -224,37 +190,35 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
           </TabsList>
 
           <TabsContent value="test" className="space-y-6">
-            {/* Quick Presets */}
+            {/* Environment Selection */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Quick Test Users</Label>
-              <div className="flex gap-2 flex-wrap">
-                {presetUsers.map((preset, index) => (
+              <Label className="text-sm font-medium">Environment *</Label>
+              <div className="flex gap-2">
+                {(['development', 'staging', 'production'] as Environment[]).map((env) => (
                   <Button
-                    key={index}
-                    variant="outline"
+                    key={env}
+                    variant={selectedEnvironment === env ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setUserAttributes(preset.attributes)}
+                    onClick={() => setSelectedEnvironment(env)}
                   >
-                    <User className="w-3 h-3 mr-1" />
-                    {preset.name}
+                    {env.charAt(0).toUpperCase() + env.slice(1)}
                   </Button>
                 ))}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setUserAttributes({})}
-                >
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Clear
-                </Button>
               </div>
             </div>
 
             {/* User Attributes Input */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">User Attributes</Label>
+              <Label className="text-sm font-medium">
+                User Attributes
+                {relevantAttributes.length < attributes.length && (
+                  <span className="text-xs text-muted-foreground ml-2">
+                    (Showing {relevantAttributes.length} attributes used in {selectedEnvironment} rules)
+                  </span>
+                )}
+              </Label>
               <div className="grid grid-cols-2 gap-4">
-                {attributes.map((attribute) => (
+                {relevantAttributes.map((attribute) => (
                   <div key={attribute.id} className="space-y-1">
                     <Label className="text-xs">{attribute.name} ({attribute.type})</Label>
                     <Input
@@ -287,7 +251,11 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
             </div>
 
             {/* Evaluate Button */}
-            <Button onClick={evaluateFlag} disabled={isEvaluating} className="w-full">
+            <Button 
+              onClick={evaluateFlag} 
+              disabled={isEvaluating || !selectedEnvironment} 
+              className="w-full"
+            >
               {isEvaluating ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -308,24 +276,13 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                   <CardTitle className="text-lg">Evaluation Result</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Returned Value</Label>
-                      <div className="font-mono text-lg p-2 bg-muted rounded">
-                        {JSON.stringify(evaluationResult.value)}
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm text-muted-foreground">Reason</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={
-                          evaluationResult.reason === "matched_rule" ? "default" :
-                          evaluationResult.reason === "traffic_split" ? "secondary" :
-                          evaluationResult.reason === "flag_disabled" ? "destructive" : "outline"
-                        }>
-                          {evaluationResult.reason.replace('_', ' ')}
-                        </Badge>
-                      </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Returned Value</Label>
+                    <div className="font-mono text-lg p-2 bg-muted rounded">
+                      {flag.dataType === 'json' ? 
+                        JSON.stringify(evaluationResult.value, null, 2) : 
+                        JSON.stringify(evaluationResult.value)
+                      }
                     </div>
                   </div>
 
@@ -362,44 +319,46 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
               <div>
                 <Label className="text-sm font-medium mb-2 block">Python SDK</Label>
                 <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono">
-                  <pre>{`# Check if flag is enabled
-if ff.is_enabled("${flag.key}", user_attributes={
-    ${Object.entries(userAttributes).map(([key, value]) => {
-      const attr = attributes.find(a => a.id === key)
-      return `"${attr?.name || key}": ${JSON.stringify(value)}`
-    }).join(',\n    ')}
-}):
-    # Flag is enabled
-    pass
-
-# Get flag value
-value = ff.get_value("${flag.key}", 
-    user_attributes={...},
+                  <pre>{`${flag.dataType === 'boolean' ? `# Get boolean flag value
+value = ff.get_bool("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
     default_value=${JSON.stringify(environmentConfig?.defaultValue)}
-)`}</pre>
+)` : flag.dataType === 'string' ? `# Get string flag value
+value = ff.get_string("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
+    default_value=${JSON.stringify(environmentConfig?.defaultValue)}
+)` : flag.dataType === 'number' ? `# Get number flag value
+value = ff.get_number("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
+    default_value=${JSON.stringify(environmentConfig?.defaultValue)}
+)` : `# Get JSON flag value
+value = ff.get_json("${flag.key}", 
+    user_attributes={
+        ${Object.entries(userAttributes).map(([key, value]) => {
+          const attr = attributes.find(a => a.id === key)
+          return `"${attr?.name || key}": ${JSON.stringify(value)}`
+        }).join(',\n        ')}
+    },
+    default_value=${JSON.stringify(environmentConfig?.defaultValue)}
+)`}`}</pre>
                 </div>
               </div>
 
-              <div>
-                <Label className="text-sm font-medium mb-2 block">Node.js SDK</Label>
-                <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-sm font-mono">
-                  <pre>{`// Check if flag is enabled
-if (ff.isEnabled("${flag.key}", {
-    ${Object.entries(userAttributes).map(([key, value]) => {
-      const attr = attributes.find(a => a.id === key)
-      return `${attr?.name || key}: ${JSON.stringify(value)}`
-    }).join(',\n    ')}
-})) {
-    // Flag is enabled
-}
-
-// Get flag value
-const value = ff.getValue("${flag.key}", 
-    userAttributes,
-    ${JSON.stringify(environmentConfig?.defaultValue)} // default
-);`}</pre>
-                </div>
-              </div>
             </div>
           </TabsContent>
         </Tabs>

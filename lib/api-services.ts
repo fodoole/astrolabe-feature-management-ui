@@ -93,6 +93,7 @@ export interface GlobalAttributeDTO {
   name: string
   type: string
   description?: string
+  projectId: string // Added to match backend response
 }
 
 export interface ApprovalRequestDTO {
@@ -254,7 +255,11 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0, search?: st
       endpoint += `&search=${encodeURIComponent(search.trim())}`
     }
 
+
     const response = await authenticatedApiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
+
+    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
+
     console.log('fetchGlobalAttributes response:', response)
 
     if (!response || !response.globalAttributes) {
@@ -431,13 +436,13 @@ export async function createGlobalAttribute(data: {
     method: 'POST',
     body: JSON.stringify(payload)
   })
-
   return {
     id: response.id,
     name: response.name,
     type: response.type as AttributeType,
     description: response.description,
-    possibleValues: data.possibleValues
+    possibleValues: data.possibleValues,
+    project_id:  response.projectId
   }
 }
 
@@ -620,4 +625,52 @@ export async function updateTeamMembers(
       }
     })
   }
+}
+
+// Flag evaluation interfaces
+export interface FlagEvaluationResult {
+  value: any
+  matchedRule?: string
+  timestamp: string
+}
+
+// Evaluate a live flag using the existing flag endpoint
+export async function evaluateLiveFlag(
+  projectKey: string,
+  flagKey: string,
+  environment: string,
+  attributes: Record<string, any>
+): Promise<FlagEvaluationResult> {
+  const response = await apiRequest<FlagEvaluationResult>(
+    `/feature-flags/${projectKey}/${flagKey}/evaluate/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        environment,
+        attributes
+      })
+    }
+  )
+  return response
+}
+
+// Evaluate flag with unsaved changes using the project-level endpoint
+export async function evaluateFlagWithChanges(
+  projectKey: string,
+  flag: any,
+  environment: string,
+  attributes: Record<string, any>
+): Promise<FlagEvaluationResult> {
+  const response = await apiRequest<FlagEvaluationResult>(
+    `/feature-flags/${projectKey}/evaluate/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        flag,
+        environment,
+        attributes
+      })
+    }
+  )
+  return response
 }

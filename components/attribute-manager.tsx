@@ -5,13 +5,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
+
 import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2, Clock } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
 import { createGlobalAttribute, fetchGlobalAttributes } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
+
 import { useAccess, requirePermission } from '@/lib/permissions'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+
+import { log } from "console"
+
 
 interface AttributeManagerProps {
   attributes: GlobalAttribute[]
@@ -32,7 +39,10 @@ const typeColors = {
 
 const ITEMS_PER_PAGE = 10
 
-export function AttributeManager({ attributes: initialAttributes, onAttributesChange }: AttributeManagerProps) {
+export function AttributeManager({
+  attributes: initialAttributes,
+  onAttributesChange,
+}: AttributeManagerProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<AttributeType | "all">("all")
   const [showNewAttributeModal, setShowNewAttributeModal] = useState(false)
@@ -40,9 +50,13 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
+
   // Track the most recently created attribute to show pending approval alert
   const [recentlyCreatedAttribute, setRecentlyCreatedAttribute] = useState<(GlobalAttribute & { project_id?: string }) | null>(null)
   const access = useAccess()
+
+  const [recentlyCreatedAttribute, setRecentlyCreatedAttribute] = useState<GlobalAttribute | null>(null)
+
 
   const loadAttributes = useCallback(async (search: string = "", page: number = 1) => {
     setIsLoading(true)
@@ -50,6 +64,12 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
       const offset = (page - 1) * ITEMS_PER_PAGE
       // Fetch one extra item to check if there are more pages
       const result = await fetchGlobalAttributes(ITEMS_PER_PAGE + 1, offset, search)
+
+
+      // If we got more than ITEMS_PER_PAGE, there are more pages
+      const hasMore = result.length > ITEMS_PER_PAGE
+      setHasNextPage(hasMore)
+
 
       // If we got more than ITEMS_PER_PAGE, there are more pages
       const hasMore = result.length > ITEMS_PER_PAGE
@@ -81,6 +101,19 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
     loadAttributes(searchQuery, currentPage)
   }, [currentPage, searchQuery, loadAttributes])
 
+
+  // Clear the recently created attribute after 1 minute
+  useEffect(() => {
+    if (recentlyCreatedAttribute) {
+      const timer = setTimeout(() => {
+        setRecentlyCreatedAttribute(null)
+      }, 60000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [recentlyCreatedAttribute])
+
+
   const filteredAttributes = selectedType === "all"
     ? attributes
     : attributes.filter(attr => attr.type === selectedType)
@@ -95,7 +128,20 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
   }) => {
     if (!requirePermission(access, 'attributes', 'create', { label: 'attributes' })) return
     try {
-      const newAttribute = await createGlobalAttribute(attributeData)
+      // Prepare payload for backend: use possible_values, and only include if defined
+      const payload: any = {
+        name: attributeData.name,
+        type: attributeData.type,
+        description: attributeData.description,
+        requested_by: "00000000-0000-0000-0000-000000000000"
+      }
+      if (attributeData.possibleValues && attributeData.possibleValues.length > 0) {
+        payload.possible_values = attributeData.possibleValues
+      }
+      const newAttribute = await createGlobalAttribute(payload)
+      // Set the recently created attribute to show the approval status
+      setRecentlyCreatedAttribute(newAttribute)
+
       // Refresh the current page to show the new attribute
       await loadAttributes(searchQuery, currentPage)
       if (onAttributesChange) {
@@ -126,11 +172,17 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
                   size="sm"
                   className="ml-4 border-amber-300 text-amber-700 hover:bg-amber-100"
                   onClick={() => {
+
                     const project_id = (recentlyCreatedAttribute as any).project_id
                     if (project_id) {
                       window.open(`/?tab=approvals&project=${project_id}`, '_blank')
                     } else {
                       window.open(`/?tab=approvals`, '_blank')
+
+                    const project_id = recentlyCreatedAttribute.project_id
+                    if (project_id) {
+                      window.open(`/?tab=approvals&project=${project_id}`, '_blank')
+
                     }
                   }}
                 >
@@ -141,6 +193,7 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
           </div>
         </Alert>
       )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Global Attributes</h1>
