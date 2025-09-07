@@ -21,6 +21,7 @@ declare module 'next-auth' {
 
   interface JWT {
     accessToken?: string
+    appJwt?: string        // Custom JWT for backend authentication
     roles?: string
     permissions?: {
       can_approve_production: boolean

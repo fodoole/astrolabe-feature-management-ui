@@ -5,11 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2, Clock } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
 import { createGlobalAttribute, fetchGlobalAttributes } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
+import { useAccess, requirePermission } from '@/lib/permissions'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface AttributeManagerProps {
   attributes: GlobalAttribute[]
@@ -38,6 +40,9 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
+  // Track the most recently created attribute to show pending approval alert
+  const [recentlyCreatedAttribute, setRecentlyCreatedAttribute] = useState<(GlobalAttribute & { project_id?: string }) | null>(null)
+  const access = useAccess()
 
   const loadAttributes = useCallback(async (search: string = "", page: number = 1) => {
     setIsLoading(true)
@@ -45,11 +50,11 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
       const offset = (page - 1) * ITEMS_PER_PAGE
       // Fetch one extra item to check if there are more pages
       const result = await fetchGlobalAttributes(ITEMS_PER_PAGE + 1, offset, search)
-      
+
       // If we got more than ITEMS_PER_PAGE, there are more pages
       const hasMore = result.length > ITEMS_PER_PAGE
       setHasNextPage(hasMore)
-      
+
       // Only show the first ITEMS_PER_PAGE items
       const displayItems = result.slice(0, ITEMS_PER_PAGE)
       setAttributes(displayItems)
@@ -76,8 +81,8 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
     loadAttributes(searchQuery, currentPage)
   }, [currentPage, searchQuery, loadAttributes])
 
-  const filteredAttributes = selectedType === "all" 
-    ? attributes 
+  const filteredAttributes = selectedType === "all"
+    ? attributes
     : attributes.filter(attr => attr.type === selectedType)
 
   const hasPrevPage = currentPage > 1
@@ -88,6 +93,7 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
     description: string
     possibleValues?: string[]
   }) => {
+    if (!requirePermission(access, 'attributes', 'create', { label: 'attributes' })) return
     try {
       const newAttribute = await createGlobalAttribute(attributeData)
       // Refresh the current page to show the new attribute
@@ -95,6 +101,8 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
       if (onAttributesChange) {
         onAttributesChange([...attributes, newAttribute])
       }
+      // Store to show approval pending banner (project_id optional for future linkage)
+      setRecentlyCreatedAttribute(newAttribute as any)
       showSuccessToast('Global attribute created successfully!')
     } catch (error) {
       handleApiError(error, 'Failed to create attribute')
@@ -103,12 +111,45 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
 
   return (
     <div className="space-y-6">
+      {/* Approval Status Alert for Recently Created Attribute */}
+      {recentlyCreatedAttribute && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800 flex-1">
+              <div className="flex items-center justify-between">
+                <span>
+                  Your attribute <strong>{recentlyCreatedAttribute.name}</strong> is <strong>pending approval</strong>.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-4 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => {
+                    const project_id = (recentlyCreatedAttribute as any).project_id
+                    if (project_id) {
+                      window.open(`/?tab=approvals&project=${project_id}`, '_blank')
+                    } else {
+                      window.open(`/?tab=approvals`, '_blank')
+                    }
+                  }}
+                >
+                  View Requests
+                </Button>
+              </div>
+            </AlertDescription>
+          </div>
+        </Alert>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Global Attributes</h1>
           <p className="text-muted-foreground">Manage reusable attributes for flag targeting</p>
         </div>
-        <Button onClick={() => setShowNewAttributeModal(true)}>
+        <Button onClick={() => {
+          if (!requirePermission(access, 'attributes', 'create', { label: 'attributes' })) return
+          setShowNewAttributeModal(true)
+        }} disabled={access.loading || !access.can('attributes', 'create')}>
           <Plus className="w-4 h-4 mr-2" />
           New Attribute
         </Button>
@@ -231,7 +272,10 @@ export function AttributeManager({ attributes: initialAttributes, onAttributesCh
               </h3>
               <p className="text-muted-foreground mb-4">Create your first global attribute to use in flag rules</p>
               {!searchQuery && selectedType === "all" && (
-                <Button onClick={() => setShowNewAttributeModal(true)}>
+                <Button onClick={() => {
+                  if (!requirePermission(access, 'attributes', 'create', { label: 'attributes' })) return
+                  setShowNewAttributeModal(true)
+                }} disabled={access.loading || !access.can('attributes', 'create')}>
                   <Plus className="w-4 h-4 mr-2" />
                   Create Attribute
                 </Button>

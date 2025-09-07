@@ -49,7 +49,7 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
-  
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -66,8 +66,16 @@ export async function apiRequest<T>(
 
     if (!response.ok) {
       const errorText = await response.text()
+      let detailMessage: string | undefined
+      try {
+        const parsed = JSON.parse(errorText)
+        // Common FastAPI style { detail: "..." }
+        if (parsed?.detail) detailMessage = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail)
+        // Alternate { message: "..." }
+        else if (parsed?.message) detailMessage = parsed.message
+      } catch (_) { /* plain text */ }
       throw new ApiError(
-        `API request failed: ${response.status} ${response.statusText}`,
+        detailMessage || `API request failed: ${response.status} ${response.statusText}`,
         response.status,
         errorText
       )
@@ -90,19 +98,23 @@ export async function authenticatedApiRequest<T>(
   if (typeof window === 'undefined') {
     throw new ApiError('authenticatedApiRequest can only be used on the client side')
   }
-  
+
   const { getSession } = await import('next-auth/react')
   const session = await getSession()
-  
+
   const url = `${API_BASE_URL}${endpoint}`
-  
+
   const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   }
-  
-  if (session?.accessToken) {
+
+  if (session?.appJwt) {
+    defaultHeaders['Authorization'] = `Bearer ${session.appJwt}`
+  } else if (session?.accessToken) {
     defaultHeaders['Authorization'] = `Bearer ${session.accessToken}`
+  } else {
+    console.warn('No token available in session for authenticated request')
   }
 
   try {
@@ -116,8 +128,14 @@ export async function authenticatedApiRequest<T>(
 
     if (!response.ok) {
       const errorText = await response.text()
+      let detailMessage: string | undefined
+      try {
+        const parsed = JSON.parse(errorText)
+        if (parsed?.detail) detailMessage = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail)
+        else if (parsed?.message) detailMessage = parsed.message
+      } catch (_) { }
       throw new ApiError(
-        `API request failed: ${response.status} ${response.statusText}`,
+        detailMessage || `API request failed: ${response.status} ${response.statusText}`,
         response.status,
         errorText
       )

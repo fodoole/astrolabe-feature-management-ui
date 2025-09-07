@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Plus, Users, Flag, Activity } from "lucide-react"
 import { useState } from "react"
+import { useAccess, requirePermission } from '@/lib/permissions'
 import { NewProjectModal } from "./modals/new-project-modal"
 import { createProject } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
@@ -30,6 +31,7 @@ export function ProjectOverview({
   onProjectsChange,
 }: ProjectOverviewProps) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
+  const access = useAccess()
 
   const getProjectStats = (projectId: string) => {
     const projectFlags = flags.filter((flag) => flag.projectId === projectId)
@@ -51,17 +53,19 @@ export function ProjectOverview({
   }
 
   const handleCreateProject = async (projectData: { name: string; key: string; description: string; teamIds: string[] }) => {
+    // Guard: projects.create required
+    if (!requirePermission(access, 'projects', 'create', { label: 'projects' })) return
     try {
       const newProject = await createProject({
         name: projectData.name,
         key: projectData.key,
         description: projectData.description
       })
-      
+
       if (onProjectsChange) {
         onProjectsChange([...projects, newProject])
       }
-      
+
       setShowNewProjectModal(false)
       showSuccessToast('Project created successfully!')
     } catch (error) {
@@ -76,7 +80,10 @@ export function ProjectOverview({
           <h1 className="text-3xl font-bold">Projects</h1>
           <p className="text-muted-foreground">Manage your Astrolabe projects</p>
         </div>
-        <Button onClick={() => setShowNewProjectModal(true)}>
+        <Button onClick={() => {
+          if (!requirePermission(access, 'projects', 'create', { label: 'projects' })) return
+          setShowNewProjectModal(true)
+        }} disabled={access.loading || !access.can('projects', 'create')}>
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Button>
@@ -127,7 +134,10 @@ export function ProjectOverview({
           <Flag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No projects yet</h3>
           <p className="text-muted-foreground mb-4">Create your first project to get started with Astrolabe</p>
-          <Button onClick={() => setShowNewProjectModal(true)}>
+          <Button onClick={() => {
+            if (!requirePermission(access, 'projects', 'create', { label: 'projects' })) return
+            setShowNewProjectModal(true)
+          }} disabled={access.loading || !access.can('projects', 'create')}>
             <Plus className="w-4 h-4 mr-2" />
             Create Project
           </Button>
