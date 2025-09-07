@@ -13,9 +13,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Flag, Users, Settings, FileText, CheckCircle, Database, BookOpen } from 'lucide-react'
+import { Flag, Settings, CheckCircle, Database, BookOpen } from 'lucide-react'
 import { ProjectOverview } from "./components/project-overview"
-import { TeamManagement } from "./components/team-management"
 import { AttributeManager } from "./components/attribute-manager"
 import { FlagEditor } from "./components/flag-editor"
 import { ApprovalCenter } from "./components/approval-center"
@@ -38,7 +37,6 @@ const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: Flag },
   { id: "get-started", label: "Get Started", icon: BookOpen },
   { id: "projects", label: "Projects", icon: Flag },
-  { id: "teams", label: "Teams", icon: Users },
   { id: "attributes", label: "Attributes", icon: Database },
   { id: "flags", label: "Flag Editor", icon: Settings },
   { id: "approvals", label: "Change Requests", icon: CheckCircle },
@@ -225,7 +223,6 @@ export default function FeatureFlagDashboard() {
                     onProjectsChange={setProjects}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={selectedProject ? projectTeams : teams} users={users} onTeamsChange={selectedProject ? setProjectTeams : setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor

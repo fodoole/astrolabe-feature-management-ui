@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
+import ReactDiffViewer from "react-diff-viewer"
+import { diff as jsonDiff } from "json-diff-kit"
 import type { ApprovalRequest } from "../types"
 import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
@@ -38,6 +40,21 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   const [error, setError] = useState<string | null>(null)
 
   const currentUserId = "00000000-0000-0000-0000-000000000000" // TODO: Get from auth context
+
+  const environment = approval?.changes?.environment
+  const getEnvConfig = (config: any) => {
+    if (!config || !environment) return null
+    if (typeof config === "object" && config.environments) {
+      return config.environments.find((e: any) => e.environment === environment) || null
+    }
+    return config
+  }
+
+  const beforeConfig = getEnvConfig(approval?.changes?.oldValue)
+  const afterConfig = getEnvConfig(approval?.changes?.newValue)
+  const diffResult = jsonDiff(beforeConfig || {}, afterConfig || {})
+  const oldDisplay = JSON.stringify((diffResult as any).before || beforeConfig || {}, null, 2)
+  const newDisplay = JSON.stringify((diffResult as any).after || afterConfig || {}, null, 2)
 
   useEffect(() => {
     const loadRequestData = async () => {
@@ -243,22 +260,17 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
                 <span className="text-muted-foreground">Action:</span>
                 <Badge variant="outline">{approval.changes?.action?.replace('_', ' ') || 'N/A'}</Badge>
               </div>
-              {approval.changes?.oldValue && (
-                <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">Previous Configuration:</span>
-                  <div className="bg-slate-900 text-slate-100 p-3 rounded text-xs font-mono overflow-auto">
-                    <pre>{JSON.stringify(approval.changes.oldValue, null, 2)}</pre>
-                  </div>
+              <div className="space-y-2">
+                <span className="text-sm text-muted-foreground">Configuration Diff:</span>
+                <div className="text-xs font-mono">
+                  <ReactDiffViewer
+                    oldValue={oldDisplay}
+                    newValue={newDisplay}
+                    splitView={true}
+                    hideLineNumbers
+                  />
                 </div>
-              )}
-              {approval.changes?.newValue && (
-                <div className="space-y-2">
-                  <span className="text-sm text-muted-foreground">New Configuration:</span>
-                  <div className="bg-slate-900 text-slate-100 p-3 rounded text-xs font-mono overflow-auto">
-                    <pre>{JSON.stringify(approval.changes.newValue, null, 2)}</pre>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
 
