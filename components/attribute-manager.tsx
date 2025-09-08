@@ -7,17 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
-
 import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2, Clock } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
 import { createGlobalAttribute, fetchGlobalAttributes } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
-
 import { useAccess, requirePermission } from '@/lib/permissions'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-
-import { log } from "console"
 
 
 interface AttributeManagerProps {
@@ -31,11 +26,7 @@ const typeIcons = {
   boolean: ToggleLeft,
 }
 
-const typeColors = {
-  string: "blue" as const,
-  number: "green" as const,
-  boolean: "purple" as const,
-}
+// Removed unused typeColors
 
 const ITEMS_PER_PAGE = 10
 
@@ -55,8 +46,6 @@ export function AttributeManager({
   const [recentlyCreatedAttribute, setRecentlyCreatedAttribute] = useState<(GlobalAttribute & { project_id?: string }) | null>(null)
   const access = useAccess()
 
-  const [recentlyCreatedAttribute, setRecentlyCreatedAttribute] = useState<GlobalAttribute | null>(null)
-
 
   const loadAttributes = useCallback(async (search: string = "", page: number = 1) => {
     setIsLoading(true)
@@ -64,17 +53,9 @@ export function AttributeManager({
       const offset = (page - 1) * ITEMS_PER_PAGE
       // Fetch one extra item to check if there are more pages
       const result = await fetchGlobalAttributes(ITEMS_PER_PAGE + 1, offset, search)
-
-
       // If we got more than ITEMS_PER_PAGE, there are more pages
       const hasMore = result.length > ITEMS_PER_PAGE
       setHasNextPage(hasMore)
-
-
-      // If we got more than ITEMS_PER_PAGE, there are more pages
-      const hasMore = result.length > ITEMS_PER_PAGE
-      setHasNextPage(hasMore)
-
       // Only show the first ITEMS_PER_PAGE items
       const displayItems = result.slice(0, ITEMS_PER_PAGE)
       setAttributes(displayItems)
@@ -141,14 +122,11 @@ export function AttributeManager({
       const newAttribute = await createGlobalAttribute(payload)
       // Set the recently created attribute to show the approval status
       setRecentlyCreatedAttribute(newAttribute)
-
       // Refresh the current page to show the new attribute
       await loadAttributes(searchQuery, currentPage)
       if (onAttributesChange) {
         onAttributesChange([...attributes, newAttribute])
       }
-      // Store to show approval pending banner (project_id optional for future linkage)
-      setRecentlyCreatedAttribute(newAttribute as any)
       showSuccessToast('Global attribute created successfully!')
     } catch (error) {
       handleApiError(error, 'Failed to create attribute')
@@ -172,17 +150,11 @@ export function AttributeManager({
                   size="sm"
                   className="ml-4 border-amber-300 text-amber-700 hover:bg-amber-100"
                   onClick={() => {
-
-                    const project_id = (recentlyCreatedAttribute as any).project_id
+                    const project_id = recentlyCreatedAttribute?.project_id
                     if (project_id) {
                       window.open(`/?tab=approvals&project=${project_id}`, '_blank')
                     } else {
                       window.open(`/?tab=approvals`, '_blank')
-
-                    const project_id = recentlyCreatedAttribute.project_id
-                    if (project_id) {
-                      window.open(`/?tab=approvals&project=${project_id}`, '_blank')
-
                     }
                   }}
                 >
