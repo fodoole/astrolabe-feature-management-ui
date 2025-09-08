@@ -199,7 +199,13 @@ export async function fetchProjects(limit = 100, offset = 0): Promise<Project[]>
       return []
     }
 
-    return response.projects.map(project => ({
+    const filteredProjects = response.projects.filter(
+      project =>
+        !project.name.toLowerCase().includes('astrolabe') &&
+        !project.key.toLowerCase().includes('astrolabe')
+    )
+
+    return filteredProjects.map(project => ({
       id: project.id,
       key: project.key,
       name: project.name,

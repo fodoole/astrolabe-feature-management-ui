@@ -82,8 +82,11 @@ export default function FeatureFlagDashboard() {
         setTeams(teamsData)
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
-        
-        if (projectsData.length > 0 && !selectedProject) {
+
+        if (
+          projectsData.length > 0 &&
+          (!selectedProject || !projectsData.some(p => p.id === selectedProject))
+        ) {
           setSelectedProject(projectsData[0].id)
         }
       } catch (err) {

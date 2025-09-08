@@ -149,8 +149,11 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
 
-        // Set default project if none selected and projects exist
-        if (projectsData.length > 0 && !selectedProject) {
+        // Set default project if none selected or current selection is missing
+        if (
+          projectsData.length > 0 &&
+          (!selectedProject || !projectsData.some(p => p.id === selectedProject))
+        ) {
           const defaultProject = projectsData[0].id
           setSelectedProject(defaultProject)
           updateURL(activeTab, nullToUndefined(defaultProject), nullToUndefined(selectedFlag))
