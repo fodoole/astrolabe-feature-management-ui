@@ -109,7 +109,7 @@ export function FlagEditor({
         
               // Ensure all envs exist
               allEnvironments.forEach(envName => {
-                if (!updatedEnvironments.some(env => env.environment === envName)) {
+                if (!updatedEnvironments.some((env: any) => env.environment === envName)) {
                   updatedEnvironments.push({
                     environment: envName,
                     enabled: false,

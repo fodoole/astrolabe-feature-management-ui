@@ -258,8 +258,6 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0, search?: st
 
     const response = await authenticatedApiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
 
-    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
-
     console.log('fetchGlobalAttributes response:', response)
 
     if (!response || !response.globalAttributes) {
@@ -431,7 +429,7 @@ export async function createGlobalAttribute(data: {
   const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
   const payload = { ...data, requested_by: SYSTEM_ACTOR_ID }
   // eslint-disable-next-line no-console
-  
+
   const response = await authenticatedApiRequest<GlobalAttributeDTO>('/global-attributes/', {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -442,7 +440,7 @@ export async function createGlobalAttribute(data: {
     type: response.type as AttributeType,
     description: response.description,
     possibleValues: data.possibleValues,
-    project_id:  response.projectId
+    project_id: response.projectId
   }
 }
 
