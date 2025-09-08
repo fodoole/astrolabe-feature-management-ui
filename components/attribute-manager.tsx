@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
+import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,6 +47,9 @@ export function AttributeManager({
   // Track the most recently created attribute to show pending approval alert
   const [recentlyCreatedAttribute, setRecentlyCreatedAttribute] = useState<(GlobalAttribute & { project_id?: string }) | null>(null)
   const access = useAccess()
+  const { data: session } = useSession()
+
+
 
 
   const loadAttributes = useCallback(async (search: string = "", page: number = 1) => {
@@ -110,12 +115,23 @@ export function AttributeManager({
     if (!requirePermission(access, 'attributes', 'create', { label: 'attributes' })) return
     try {
       // Prepare payload for backend: use possible_values, and only include if defined
+      const backendUserId = getUserIdFromSession(session)
+
+      // If backend user ID is not available, show a warning and prevent the operation
+      if (!backendUserId) {
+        console.error('Cannot create attribute: Backend user ID not available in session')
+        handleApiError(new Error('User authentication issue - please sign out and sign in again'),
+          'Cannot create attribute: Your user ID is not available')
+        return
+      }
+
       const payload: any = {
         name: attributeData.name,
         type: attributeData.type,
         description: attributeData.description,
-        requested_by: "00000000-0000-0000-0000-000000000000"
+        requested_by: backendUserId
       }
+
       if (attributeData.possibleValues && attributeData.possibleValues.length > 0) {
         payload.possible_values = attributeData.possibleValues
       }

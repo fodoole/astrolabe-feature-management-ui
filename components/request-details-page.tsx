@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,10 +10,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
-import ReactDiffViewer from "react-diff-viewer"
-import { diff as jsonDiff } from "json-diff-kit"
+// Removed react-diff-viewer and json-diff-kit (incompatible peer deps with React 19)
 import type { ApprovalRequest } from "../types"
 import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
+import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
 interface RequestDetailsPageProps {
@@ -38,8 +39,13 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { data: session } = useSession()
 
-  const currentUserId = "00000000-0000-0000-0000-000000000000" // TODO: Get from auth context
+
+
+  // Get user ID from our utility hook - always use backend user ID
+  const userId = useUserId()
+  const currentUserId = userId || null // Use null instead of "system-user" to ensure errors are more obvious
 
   const environment = approval?.changes?.environment
   const getEnvConfig = (config: any) => {
@@ -52,9 +58,8 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
 
   const beforeConfig = getEnvConfig(approval?.changes?.oldValue)
   const afterConfig = getEnvConfig(approval?.changes?.newValue)
-  const diffResult = jsonDiff(beforeConfig || {}, afterConfig || {})
-  const oldDisplay = JSON.stringify((diffResult as any).before || beforeConfig || {}, null, 2)
-  const newDisplay = JSON.stringify((diffResult as any).after || afterConfig || {}, null, 2)
+  const oldDisplay = JSON.stringify(beforeConfig || {}, null, 2)
+  const newDisplay = JSON.stringify(afterConfig || {}, null, 2)
 
   useEffect(() => {
     const loadRequestData = async () => {
@@ -85,7 +90,14 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
 
   const handleApprove = async () => {
     if (!approval) return
-    
+
+    // Check if we have a valid user ID
+    if (!currentUserId) {
+      handleApiError(new Error('User authentication issue - please sign out and sign in again'),
+        'Cannot approve: Your user ID is not available')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const updatedApproval = await approveRequest(approval.id, currentUserId, comment)
@@ -101,7 +113,14 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
 
   const handleReject = async () => {
     if (!approval) return
-    
+
+    // Check if we have a valid user ID
+    if (!currentUserId) {
+      handleApiError(new Error('User authentication issue - please sign out and sign in again'),
+        'Cannot reject: Your user ID is not available')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const updatedApproval = await rejectRequest(approval.id, currentUserId, comment)
@@ -181,7 +200,9 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Flag className="w-4 h-4" />
-                <CardTitle className="text-lg">{approval.flag?.name || 'Unknown Flag'}</CardTitle>
+                <CardTitle className="text-lg">
+                  {approval.entityname || (approval.flag && approval.flag.name) || 'Unknown'}
+                </CardTitle>
                 <Badge variant={statusColors[approval.status]} className="gap-1">
                   <StatusIcon className="w-3 h-3" />
                   {approval.status}
@@ -204,18 +225,20 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
               <h4 className="font-medium">Request Details</h4>
               <Badge variant="outline">{approval.status === 'pending' ? 'Pending Review' : approval.status}</Badge>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Project:</span>
                 <div className="font-medium">{approval.project?.name || 'Unknown Project'}</div>
               </div>
-              {approval.flag && (
-                <div>
-                  <span className="text-muted-foreground">Flag:</span>
-                  <div className="font-medium">{approval.flag.name}</div>
+              <div>
+                <span className="text-muted-foreground">
+                  {approval.flag ? 'Flag:' : 'Entity:'}
+                </span>
+                <div className="font-medium">
+                  {approval.entityname || (approval.flag && approval.flag.name) || 'Unknown'}
                 </div>
-              )}
+              </div>
               <div>
                 <span className="text-muted-foreground">Requested by:</span>
                 <div className="flex items-center gap-2">
@@ -261,15 +284,10 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
                 <Badge variant="outline">{approval.changes?.action?.replace('_', ' ') || 'N/A'}</Badge>
               </div>
               <div className="space-y-2">
-                <span className="text-sm text-muted-foreground">Configuration Diff:</span>
-                <div className="text-xs font-mono">
-                  <ReactDiffViewer
-                    oldValue={oldDisplay}
-                    newValue={newDisplay}
-                    splitView={true}
-                    hideLineNumbers
-                  />
-                </div>
+                <span className="text-sm text-muted-foreground">Before:</span>
+                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto mb-2 max-h-64">{oldDisplay}</pre>
+                <span className="text-sm text-muted-foreground">After:</span>
+                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto max-h-64">{newDisplay}</pre>
               </div>
             </div>
           </div>
@@ -305,8 +323,8 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={handleReject}
                   disabled={isSubmitting}
                   className="gap-2"
@@ -314,7 +332,7 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
                   <XCircle className="w-4 h-4" />
                   {isSubmitting ? "Rejecting..." : "Reject"}
                 </Button>
-                <Button 
+                <Button
                   onClick={handleApprove}
                   disabled={isSubmitting}
                   className="gap-2"

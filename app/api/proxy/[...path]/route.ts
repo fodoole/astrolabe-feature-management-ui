@@ -122,23 +122,25 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
     body = await request.text()
   }
 
-  console.info(
-    '[proxy:request]',
-    JSON.stringify({
-      reqId,
-      method,
-      to: url,
-      query: Object.fromEntries(searchParams.entries()),
-      headers: redactHeaders(new Headers(request.headers)),
-      bodyPreview: body ? body.slice(0, 500) : undefined,
-    })
-  )
+  // Logs disabled to reduce console noise
+  // console.info(
+  //   '[proxy:request]',
+  //   JSON.stringify({
+  //     reqId,
+  //     method,
+  //     to: url,
+  //     query: Object.fromEntries(searchParams.entries()),
+  //     headers: redactHeaders(new Headers(request.headers)),
+  //     bodyPreview: body ? body.slice(0, 500) : undefined,
+  //   })
+  // )
 
   let upstream: Response
   try {
     upstream = await fetch(url, { method, headers: fetchHeaders, body, redirect: 'follow' })
   } catch (e) {
     const dt = Math.round(performance.now() - t0)
+    // Keep error logging for network errors as these are important for troubleshooting
     console.error(
       '[proxy:network_error]',
       JSON.stringify({ reqId, method, to: url, ms: dt, error: e instanceof Error ? e.message : String(e) })
@@ -162,18 +164,19 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
         ? JSON.stringify(payload).slice(0, 800)
         : payload
 
-  console.info(
-    '[proxy:response]',
-    JSON.stringify({
-      reqId,
-      method,
-      status: upstream.status,
-      contentType: ct || 'none',
-      ms: dt,
-      headers: Object.fromEntries(upstream.headers.entries()),
-      bodyPreview,
-    })
-  )
+  // Logs disabled to reduce console noise
+  // console.info(
+  //   '[proxy:response]',
+  //   JSON.stringify({
+  //     reqId,
+  //     method,
+  //     status: upstream.status,
+  //     contentType: ct || 'none',
+  //     ms: dt,
+  //     headers: Object.fromEntries(upstream.headers.entries()),
+  //     bodyPreview,
+  //   })
+  // )
 
   // Custom log: check for members in payload
   if (payload && typeof payload === 'object' && 'members' in payload) {

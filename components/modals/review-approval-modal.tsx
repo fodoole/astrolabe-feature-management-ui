@@ -15,8 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, XCircle, Flag, User, Calendar } from 'lucide-react'
-import ReactDiffViewer from "react-diff-viewer"
-import { diff as jsonDiff } from "json-diff-kit"
+
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag } from "../../types"
 
 interface ReviewApprovalModalProps {
@@ -43,20 +42,19 @@ export function ReviewApprovalModal({
   const [comment, setComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const environment = approval.changes.environment
+  const environment = approval?.changes?.environment
   const getEnvConfig = (config: any) => {
-    if (!config) return null
+    if (!config || !environment) return null
     if (typeof config === "object" && config.environments) {
       return config.environments.find((e: any) => e.environment === environment) || null
     }
     return config
   }
 
-  const beforeConfig = getEnvConfig(approval.changes.oldValue)
-  const afterConfig = getEnvConfig(approval.changes.newValue)
-  const diffResult = jsonDiff(beforeConfig || {}, afterConfig || {})
-  const oldDisplay = JSON.stringify((diffResult as any).before || beforeConfig || {}, null, 2)
-  const newDisplay = JSON.stringify((diffResult as any).after || afterConfig || {}, null, 2)
+  const beforeConfig = getEnvConfig(approval?.changes?.oldValue)
+  const afterConfig = getEnvConfig(approval?.changes?.newValue)
+  const oldDisplay = JSON.stringify(beforeConfig || {}, null, 2)
+  const newDisplay = JSON.stringify(afterConfig || {}, null, 2)
 
   if (!approval || !project || !user) {
     console.log("ReviewApprovalModal early return:", { approval: !!approval, project: !!project, user: !!user, flag: !!flag })
@@ -157,15 +155,10 @@ export function ReviewApprovalModal({
                 <Badge variant="outline">{approval.changes.action.replace('_', ' ')}</Badge>
               </div>
               <div className="space-y-2">
-                <span className="text-sm text-muted-foreground">Configuration Diff:</span>
-                <div className="text-xs font-mono">
-                  <ReactDiffViewer
-                    oldValue={oldDisplay}
-                    newValue={newDisplay}
-                    splitView={true}
-                    hideLineNumbers
-                  />
-                </div>
+                <span className="text-sm text-muted-foreground"> Before:</span>
+                <pre className="text-xs font-mono bg-gray-100 p-2 rounded mb-2 overflow-x-auto">{oldDisplay}</pre>
+                <span className="text-sm text-muted-foreground"> After:</span>
+                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto">{newDisplay}</pre>
               </div>
             </div>
           </div>

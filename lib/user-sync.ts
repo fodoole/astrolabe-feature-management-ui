@@ -5,11 +5,12 @@ interface UserSyncData {
   provider: string
   provider_id: string
   google_groups?: string[]
+  userId: string | null
 }
 
 export async function syncUserWithBackend(userData: UserSyncData) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-  
+
   try {
     const response = await fetch(`${apiUrl}/api/v1/users/sync`, {
       method: 'POST',
@@ -18,13 +19,14 @@ export async function syncUserWithBackend(userData: UserSyncData) {
       },
       body: JSON.stringify(userData),
     })
-    
+
     if (!response.ok) {
       throw new Error(`Failed to sync user: ${response.statusText}`)
     }
-    
+
     const syncedUser = await response.json()
-    console.log('User synced successfully:', syncedUser)
+    console.log('User synced successfully - Backend user ID:', syncedUser?.id)
+    // Return the synced user with backend ID
     return syncedUser
   } catch (error) {
     console.error('Error syncing user with backend:', error)

@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { usePermissions, useAccess, requirePermission } from "../lib/permissions"
+import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -106,7 +108,7 @@ export function FlagEditor({
           prevFlags.map(flag => {
             if (flag.id === selectedFlag) {
               let updatedEnvironments = flag.environments ?? []
-        
+
               // Ensure all envs exist
               allEnvironments.forEach(envName => {
                 if (!updatedEnvironments.some((env: any) => env.environment === envName)) {
@@ -115,15 +117,15 @@ export function FlagEditor({
                     enabled: false,
                     defaultValue:
                       flag.dataType === "boolean" ? false :
-                      flag.dataType === "string" ? "" :
-                      flag.dataType === "number" ? 0 :
-                      flag.dataType === "json" ? {} : null,
+                        flag.dataType === "string" ? "" :
+                          flag.dataType === "number" ? 0 :
+                            flag.dataType === "json" ? {} : null,
                     rules: [],
                     trafficSplits: []
                   })
                 }
               })
-        
+
               return { ...flag, environments: updatedEnvironments }
             }
             return flag
@@ -141,6 +143,9 @@ export function FlagEditor({
 
     fetchFlagDefinition()
   }, [selectedFlag, selectedProject, flags, projects])
+
+  // Get the current user from the session
+  const { data: session } = useSession()
 
   const projectFlags = selectedProject ? localFlags.filter((flag) => flag.projectId === selectedProject) : localFlags
 
@@ -164,7 +169,6 @@ export function FlagEditor({
 
   // If environment doesn't exist, create it
   if (currentFlag && !currentEnvironmentConfig) {
-    console.log(`Environment ${selectedEnvironment} not found, creating it...`)
     const newEnvironmentConfig = {
       environment: selectedEnvironment,
       enabled: false,
@@ -216,7 +220,7 @@ export function FlagEditor({
         description: flagData.description,
         data_type: flagData.dataType,
         project_id: flagData.projectId,
-        created_by: "00000000-0000-0000-0000-000000000000",
+        created_by: getUserIdFromSession(session) || "system-user",
         project_key: project.key,
       };
 
@@ -501,7 +505,7 @@ export function FlagEditor({
         entityType: 'feature_flag',
         entityId: currentFlag.id,
         projectId: project.id,
-        requestedBy: '00000000-0000-0000-0000-000000000000',
+        requestedBy: getUserIdFromSession(session) ?? "",
         action: beforeSnapshot ? 'update_flag' : 'create_flag',
         beforeSnapshot,
         afterSnapshot,
@@ -660,14 +664,14 @@ export function FlagEditor({
             </Button>
 
             <div className="flex gap-2 mt-2">
-              <Button 
-                onClick={handleSaveChanges} 
+              <Button
+                onClick={handleSaveChanges}
                 disabled={isSaving}
                 size="sm"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>
-              <Button 
+              <Button
                 onClick={handleDiscardChanges}
                 variant="outline"
                 size="sm"
