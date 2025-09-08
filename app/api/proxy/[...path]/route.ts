@@ -73,7 +73,14 @@ function friendlyMessage(status: number, formatted: any, raw: any) {
 async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'PUT', params: { path: string[] }) {
   const p = await params
   const t0 = performance.now()
-  const reqId = crypto.randomUUID()
+  // Reuse incoming request ID if provided; otherwise generate and log absence
+  let reqId = request.headers.get('x-request-id') || ''
+  if (!reqId) {
+    reqId = crypto.randomUUID()
+    console.warn('[proxy:reqId] Incoming request missing x-request-id header; generated new', { reqId })
+  } else {
+    console.info('[proxy:reqId] Reusing incoming request id', { reqId })
+  }
 
   // Build URL
   const path = (p.path || []).join('/')
@@ -82,11 +89,30 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
   const url = `${API_BASE_URL}/${path}${path.endsWith('/') ? '' : '/'}${queryString ? `?${queryString}` : ''}`
 
   // Prepare headers
-  // You can forward some headers from the incoming request if needed.
-  // Keep it minimal to avoid CORS/auth surprises.
   const fetchHeaders: HeadersInit = {
-    Accept: 'application/json', // prefer JSON; FastAPI will send proper Content-Type
+    Accept: 'application/json',
     'Content-Type': 'application/json',
+  }
+
+  // Get the JWT from the NextAuth session
+  const { getToken } = await import("next-auth/jwt");
+  const token = await getToken({
+    req: request,
+    secret: process.env.APP_JWT_SECRET || process.env.NEXTAUTH_SECRET
+  });
+
+  if (token?.appJwt) {
+    // Use our custom JWT that's compatible with the backend
+    fetchHeaders['Authorization'] = `Bearer ${token.appJwt}`;
+
+    // Fallback to any provided Authorization header
+    const authHeader = request.headers.get('authorization');
+    if (authHeader) {
+      fetchHeaders['Authorization'] = authHeader;
+      console.log('[proxy:auth] Using provided Authorization header');
+    } else {
+      console.warn('[proxy:auth] No JWT found, request may fail auth');
+    }
   }
 
   // Body (only for POST/PATCH)

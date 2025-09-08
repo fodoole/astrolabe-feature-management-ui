@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -68,6 +69,11 @@ export function ReviewApprovalModal({
       await onApprove(approval.id, comment)
       setComment("")
       onOpenChange(false)
+      toast.success('Approval submitted')
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to approve request'
+      toast.error(msg)
+      console.error('Approve error:', err)
     } finally {
       setIsSubmitting(false)
     }
@@ -79,6 +85,11 @@ export function ReviewApprovalModal({
       await onReject(approval.id, comment)
       setComment("")
       onOpenChange(false)
+      toast.success('Rejection submitted')
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to reject request'
+      toast.error(msg)
+      console.error('Reject error:', err)
     } finally {
       setIsSubmitting(false)
     }
@@ -104,7 +115,7 @@ export function ReviewApprovalModal({
               <h4 className="font-medium">Request Details</h4>
               <Badge variant="outline">Pending Review</Badge>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Project:</span>
@@ -187,15 +198,15 @@ export function ReviewApprovalModal({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
             Cancel
           </Button>
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             onClick={handleReject}
             disabled={isSubmitting}
             className="gap-2"
@@ -203,7 +214,7 @@ export function ReviewApprovalModal({
             <XCircle className="w-4 h-4" />
             {isSubmitting ? "Rejecting..." : "Reject"}
           </Button>
-          <Button 
+          <Button
             onClick={handleApprove}
             disabled={isSubmitting}
             className="gap-2"

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { usePermissions, useAccess, requirePermission } from "../lib/permissions"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -64,6 +65,7 @@ export function FlagEditor({
   const [tempDefaultValue, setTempDefaultValue] = useState("")
   const [isLoadingFlagDefinition, setIsLoadingFlagDefinition] = useState(false)
   const [flagDefinitionError, setFlagDefinitionError] = useState<string | null>(null)
+  const access = useAccess()
 
   useEffect(() => {
     setHasUnsavedChanges(false)
@@ -80,7 +82,7 @@ export function FlagEditor({
 
       const currentFlag = flags.find(flag => flag.id === selectedFlag)
       const project = projects.find(p => p.id === selectedProject)
-      
+
       if (!currentFlag || !project) {
         setIsLoadingFlagDefinition(false)
         setFlagDefinitionError(null)
@@ -90,12 +92,14 @@ export function FlagEditor({
       try {
         setIsLoadingFlagDefinition(true)
         setFlagDefinitionError(null)
-        
+
         console.log(`Fetching flag definition for project: ${project.key}, flag: ${currentFlag.key}`)
         const flagDefinition = await getFlagDefinition(project.key, currentFlag.key)
-        
+
         console.log('Flag definition fetched:', flagDefinition)
+
         const allEnvironments: Environment[] = ["development", "staging", "production"]
+
 
         // Update the local flag with the fetched definition
         setLocalFlags(prevFlags =>
@@ -105,7 +109,7 @@ export function FlagEditor({
         
               // Ensure all envs exist
               allEnvironments.forEach(envName => {
-                if (!updatedEnvironments.some(env => env.environment === envName)) {
+                if (!updatedEnvironments.some((env: any) => env.environment === envName)) {
                   updatedEnvironments.push({
                     environment: envName,
                     enabled: false,
@@ -125,7 +129,7 @@ export function FlagEditor({
             return flag
           })
         )
-        
+
       } catch (error) {
         console.error('Error fetching flag definition:', error)
         setFlagDefinitionError('Failed to load flag definition')
@@ -145,34 +149,34 @@ export function FlagEditor({
   // Debug flag structure
   console.log("Current flag environments:", currentFlag?.environments)
   console.log("Selected environment:", selectedEnvironment)
-  
+
   // More detailed debugging
   if (currentFlag?.environments) {
-    console.log("Available environment names:", currentFlag.environments.map(env => env.environment))
-    console.log("Environment types:", currentFlag.environments.map(env => typeof env.environment))
+    console.log("Available environment names:", currentFlag.environments.map((env: any) => env.environment))
+    console.log("Environment types:", currentFlag.environments.map((env: any) => typeof env.environment))
     console.log("Looking for environment:", selectedEnvironment, "type:", typeof selectedEnvironment)
-    console.log("Environment match found:", currentFlag.environments.some(env => env.environment === selectedEnvironment))
+    console.log("Environment match found:", currentFlag.environments.some((env: any) => env.environment === selectedEnvironment))
     console.log("Full environments array:", JSON.stringify(currentFlag.environments, null, 2))
   }
-  
+
   // Find or create the current environment config
-  let currentEnvironmentConfig = currentFlag?.environments?.find((env) => env.environment === selectedEnvironment)
-  
+  let currentEnvironmentConfig = currentFlag?.environments?.find((env: any) => env.environment === selectedEnvironment)
+
   // If environment doesn't exist, create it
   if (currentFlag && !currentEnvironmentConfig) {
     console.log(`Environment ${selectedEnvironment} not found, creating it...`)
     const newEnvironmentConfig = {
       environment: selectedEnvironment,
       enabled: false,
-      defaultValue: currentFlag.dataType === 'boolean' ? false : 
-                   currentFlag.dataType === 'string' ? '' :
-                   currentFlag.dataType === 'number' ? 0 : null,
+      defaultValue: currentFlag.dataType === 'boolean' ? false :
+        currentFlag.dataType === 'string' ? '' :
+          currentFlag.dataType === 'number' ? 0 : null,
       rules: [],
       trafficSplits: []
     }
-    
+
     // Update the local flags to include the missing environment
-    setLocalFlags(prevFlags => 
+    setLocalFlags(prevFlags =>
       prevFlags.map(flag => {
         if (flag.id === currentFlag.id) {
           return {
@@ -183,10 +187,10 @@ export function FlagEditor({
         return flag
       })
     )
-    
+
     currentEnvironmentConfig = newEnvironmentConfig
   }
-  
+
   // Debug current environment config
   console.log("Current environment config:", currentEnvironmentConfig)
   console.log("Current environment rules:", currentEnvironmentConfig?.rules)
@@ -198,31 +202,32 @@ export function FlagEditor({
     dataType: FlagDataType
     projectId: string
   }) => {
+    if (!requirePermission(access, 'flags', 'create', { label: 'flags' })) return
     try {
       setIsCreatingFlag(true)
       setCreateFlagMessage(null)
-      
+
       const project = projects.find(p => p.id === flagData.projectId)
       if (!project) throw new Error("Project not found")
-      
+
       const flagPayload = {
         key: flagData.key,
         name: flagData.name,
         description: flagData.description,
         data_type: flagData.dataType,
-        project_id: flagData.projectId, 
+        project_id: flagData.projectId,
         created_by: "00000000-0000-0000-0000-000000000000",
         project_key: project.key,
       };
-      
+
       await createFeatureFlag(flagPayload)
-      
+
       // Refresh the flags list
       await onFlagsChange()
-      
-      
+
+
       // Clear success message after 3 seconds
-      
+
       showSuccessToast('Feature flag created successfully!')
       console.log("Flag created successfully:", flagData)
     } catch (error) {
@@ -239,8 +244,10 @@ export function FlagEditor({
     logicalOperator: LogicalOperator
     returnValue?: any
   }) => {
+    // In production require ability to request approval (not direct update permission)
+    if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: 'flag rule changes' })) return
     if (!currentFlag || !selectedProject) return
-    
+
     const newRule: Rule = {
       id: `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: ruleData.name,
@@ -250,17 +257,17 @@ export function FlagEditor({
       enabled: true,
       trafficSplits: []
     }
-    
+
     console.log("Creating rule:", newRule)
     console.log("Current flag:", currentFlag)
     console.log("Selected environment:", selectedEnvironment)
-    
+
     setLocalFlags(prevFlags => {
-      const updatedFlags = prevFlags.map(flag => {
+      const updatedFlags = prevFlags.map((flag: any) => {
         if (flag.id === currentFlag.id) {
           const updatedFlag = {
             ...flag,
-            environments: flag.environments.map(env => {
+            environments: flag.environments.map((env: any) => {
               if (env.environment === selectedEnvironment) {
                 console.log("Adding rule to environment:", env.environment)
                 console.log("Current rules:", env.rules)
@@ -284,7 +291,7 @@ export function FlagEditor({
       console.log("All updated flags:", updatedFlags)
       return updatedFlags
     })
-    
+
     setHasUnsavedChanges(true)
     console.log("Rule creation completed")
   }
@@ -296,17 +303,17 @@ export function FlagEditor({
 
   const handleUpdateRule = (ruleId: string, updates: Partial<Rule>) => {
     if (!currentFlag) return
-    
-    setLocalFlags(prevFlags => 
-      prevFlags.map(flag => {
+
+    setLocalFlags(prevFlags =>
+      prevFlags.map((flag: any) => {
         if (flag.id === currentFlag.id) {
           return {
             ...flag,
-            environments: flag.environments.map(env => {
+            environments: flag.environments.map((env: any) => {
               if (env.environment === selectedEnvironment) {
                 return {
                   ...env,
-                  rules: env.rules.map(rule => 
+                  rules: env.rules.map((rule: any) =>
                     rule.id === ruleId ? { ...rule, ...updates } : rule
                   )
                 }
@@ -318,24 +325,24 @@ export function FlagEditor({
         return flag
       })
     )
-    
+
     setHasUnsavedChanges(true)
     console.log("Rule updated:", ruleId, updates)
   }
 
   const handleDeleteRule = (ruleId: string) => {
     if (!currentFlag) return
-    
-    setLocalFlags(prevFlags => 
+
+    setLocalFlags(prevFlags =>
       prevFlags.map(flag => {
         if (flag.id === currentFlag.id) {
           return {
             ...flag,
-            environments: flag.environments.map(env => {
+            environments: flag.environments.map((env: any) => {
               if (env.environment === selectedEnvironment) {
                 return {
                   ...env,
-                  rules: env.rules.filter(rule => rule.id !== ruleId)
+                  rules: env.rules.filter((rule: any) => rule.id !== ruleId)
                 }
               }
               return env
@@ -345,20 +352,21 @@ export function FlagEditor({
         return flag
       })
     )
-    
+
     setHasUnsavedChanges(true)
     console.log("Rule deleted:", ruleId)
   }
 
   const handleToggleEnvironment = (enabled: boolean) => {
+    if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: `flag environment ${selectedEnvironment}` })) return
     if (!currentFlag) return
-    
-    setLocalFlags(prevFlags => 
+
+    setLocalFlags(prevFlags =>
       prevFlags.map(flag => {
         if (flag.id === currentFlag.id) {
           return {
             ...flag,
-            environments: flag.environments.map(env => {
+            environments: flag.environments.map((env: any) => {
               if (env.environment === selectedEnvironment) {
                 return {
                   ...env,
@@ -372,19 +380,20 @@ export function FlagEditor({
         return flag
       })
     )
-    
+
     setHasUnsavedChanges(true)
   }
 
   const handleUpdateDefaultValue = (defaultValue: any) => {
+    if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: 'default value change' })) return
     if (!currentFlag) return
-    
-    setLocalFlags(prevFlags => 
+
+    setLocalFlags(prevFlags =>
       prevFlags.map(flag => {
         if (flag.id === currentFlag.id) {
           return {
             ...flag,
-            environments: flag.environments.map(env => {
+            environments: flag.environments.map((env: any) => {
               if (env.environment === selectedEnvironment) {
                 return {
                   ...env,
@@ -398,7 +407,7 @@ export function FlagEditor({
         return flag
       })
     )
-    
+
     setHasUnsavedChanges(true)
   }
 
@@ -440,25 +449,25 @@ export function FlagEditor({
 
   const formatValueForEditing = (value: any, dataType?: FlagDataType): string => {
     if (value === null || value === undefined) {
-      return dataType === 'boolean' ? 'false' : 
-             dataType === 'number' ? '0' : 
-             dataType === 'json' ? '{}' : ''
+      return dataType === 'boolean' ? 'false' :
+        dataType === 'number' ? '0' :
+          dataType === 'json' ? '{}' : ''
     }
-    
+
     if (dataType === 'json') {
       return JSON.stringify(value, null, 2)
     }
-    
+
     return String(value)
   }
 
   const formatValueForDisplay = (value: any, dataType?: FlagDataType): string => {
     if (value === null || value === undefined) return 'null'
-    
+
     if (dataType === 'json') {
       return JSON.stringify(value, null, 2)
     }
-    
+
     return String(value)
   }
 
@@ -469,23 +478,25 @@ export function FlagEditor({
   }
 
   const handleSaveChanges = async () => {
+    // Only require approvals.request permission explicitly when production changes are proposed
+    if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: 'approval requests' })) return
     if (!currentFlag || !selectedProject) return
-    
+
     try {
       setIsSaving(true)
       const project = projects.find(p => p.id === selectedProject)
       if (!project) throw new Error("Project not found")
-      
+
       let beforeSnapshot: any = null
       try {
         beforeSnapshot = await getFlagDefinition(project.key, currentFlag.key)
       } catch (error) {
         console.log("No existing flag definition found, treating as new flag")
       }
-      
+
       // Use the local flag state for after snapshot
       const afterSnapshot = transformFlagToSDKFormat(currentFlag)
-      
+
       await createApprovalRequest({
         entityType: 'feature_flag',
         entityId: currentFlag.id,
@@ -496,23 +507,23 @@ export function FlagEditor({
         afterSnapshot,
         comments: `Flag configuration changes for ${currentFlag.name}`
       })
-      
+
       setHasUnsavedChanges(false)
       console.log("Approval request created successfully")
       showSuccessToast("Approval request created successfully. Changes will be applied once approved.")
-      
+
       // Wait 500ms then refresh flags and selected flag definition
       setTimeout(async () => {
         try {
           // Refresh the flags list
           await onFlagsChange()
-          
+
           // Refresh the selected flag definition
           if (selectedFlag && selectedProject) {
             const flagDefinition = await getFlagDefinition(project.key, currentFlag.key)
-            
+
             // Update the local flag with the refreshed definition
-            setLocalFlags(prevFlags => 
+            setLocalFlags(prevFlags =>
               prevFlags.map(flag => {
                 if (flag.id === selectedFlag) {
                   const updatedEnvironments = flagDefinition.environments?.map(env => ({
@@ -544,7 +555,7 @@ export function FlagEditor({
           console.error('Error refreshing data after save:', error)
         }
       }, 500)
-      
+
     } catch (error) {
       handleApiError(error, 'Failed to create approval request')
     } finally {
@@ -564,8 +575,16 @@ export function FlagEditor({
 
   const selectedProjectData = projects.find((p) => p.id === selectedProject)
 
-  // Check if flag editing is allowed (approved or rejected, but not pending)
-  const isEditingAllowed = currentFlag?.status !== 'pending'
+  const { can_create_flags, can_approve_staging, can_approve_production, isLoading } = usePermissions()
+
+  // Environment-aware edit capability:
+  const isProductionEnv = selectedEnvironment === 'production'
+  // Production edits allowed only if user can request approval (no direct update)
+  const canProposeProdChange = access.can('approvals', 'request')
+  const baseFlagStatusOk = currentFlag?.status !== 'pending'
+  const canEditFlag = (!isProductionEnv && baseFlagStatusOk) || (isProductionEnv && canProposeProdChange && baseFlagStatusOk)
+  const canApproveProduction = can_approve_production
+  const canApproveStaging = can_approve_staging
 
   return (
     <div className="space-y-6">
@@ -576,7 +595,10 @@ export function FlagEditor({
             {selectedProjectData?.name} • {projectFlags.length} flags
           </p>
         </div>
-        <Button onClick={() => setShowNewFlagModal(true)} disabled={!selectedProject || isCreatingFlag}>
+        <Button onClick={() => {
+          if (!requirePermission(access, 'flags', 'create', { label: 'flags' })) return
+          setShowNewFlagModal(true)
+        }} disabled={!selectedProject || isCreatingFlag || access.loading || !access.can('flags', 'create')}>
           <Plus className="w-4 h-4 mr-2" />
           {isCreatingFlag ? "Creating..." : "New Flag"}
         </Button>
@@ -593,7 +615,7 @@ export function FlagEditor({
       )}
 
       {/* Approval Status Alert */}
-      {currentFlag && !isEditingAllowed && (
+      {currentFlag && !canEditFlag && (
         <Alert className="border-amber-200 bg-amber-50">
           <div className="flex items-center gap-2">
             {currentFlag.status === 'pending' && <Clock className="h-4 w-4 text-amber-600" />}
@@ -621,12 +643,22 @@ export function FlagEditor({
           </div>
         </Alert>
       )}
-      
+
       {hasUnsavedChanges && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             You have unsaved changes. Click Save to persist your changes.
+
+            <Button
+              onClick={handleSaveChanges}
+              disabled={!canEditFlag || isSaving}
+              className="ml-2"
+              size="sm"
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+
             <div className="flex gap-2 mt-2">
               <Button 
                 onClick={handleSaveChanges} 
@@ -643,10 +675,11 @@ export function FlagEditor({
                 Discard
               </Button>
             </div>
+
           </AlertDescription>
         </Alert>
       )}
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Flag List */}
         <Card className="lg:col-span-1">
@@ -657,9 +690,8 @@ export function FlagEditor({
             {projectFlags.map((flag) => (
               <div
                 key={flag.id}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                  selectedFlag === flag.id ? "bg-muted border-primary" : ""
-                }`}
+                className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${selectedFlag === flag.id ? "bg-muted border-primary" : ""
+                  }`}
                 onClick={() => onSelectFlag(flag.id)}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -670,7 +702,7 @@ export function FlagEditor({
                 </div>
                 <div className="text-xs text-muted-foreground mb-2">{flag.key}</div>
                 <div className="flex gap-1">
-                  {flag.environments.map((env) => (
+                  {flag.environments.map((env: any) => (
                     <Badge key={env.environment} variant={env.enabled ? "default" : "secondary"} className="text-xs">
                       {env.environment.charAt(0).toUpperCase()}
                     </Badge>
@@ -723,203 +755,201 @@ export function FlagEditor({
                       <TabsTrigger value="staging">Staging</TabsTrigger>
                       <TabsTrigger value="production">Production</TabsTrigger>
                     </TabsList>
-                  <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Preview
-                  </Button>
-                </div>
+                    <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      Preview
+                    </Button>
+                  </div>
 
-                {/* Auto-approval messaging */}
-                {selectedEnvironment === 'development' && (
-                  <Alert className="mb-4 border-blue-200 bg-blue-50">
-                    <CheckCircle className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
-                      Changes to the <strong>development</strong> environment will be auto-approved.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                {selectedEnvironment === 'staging' && (
-                  <Alert className="mb-4 border-blue-200 bg-blue-50">
-                    <CheckCircle className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
-                      Changes to the <strong>staging</strong> environment will be auto-approved.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                {selectedEnvironment === 'production' && (
-                  <Alert className="mb-4 border-blue-200 bg-blue-50">
-                    <AlertCircle className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
-                      Changes to the <strong>production</strong> environment will be auto-approved only for the flag owner.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                  {/* Auto-approval messaging */}
+                  {selectedEnvironment === 'development' && (
+                    <Alert className="mb-4 border-blue-200 bg-blue-50">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-800">
+                        Changes to the <strong>development</strong> environment will be auto-approved.
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
-                {(["development", "staging", "production"] as Environment[]).map((env) => (
-                  <TabsContent key={env} value={env} className="space-y-6">
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="flex items-center gap-2">
-                              <Flag className="w-5 h-5" />
-                              {currentFlag.name}
-                            </CardTitle>
-                            <CardDescription>{currentFlag.description}</CardDescription>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Enabled</span>
-                            <Switch 
-                              checked={currentEnvironmentConfig?.enabled || false} 
-                              onCheckedChange={handleToggleEnvironment}
-                              disabled={!isEditingAllowed}
-                            />
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium">Default Value</label>
-                              {!isEditingDefaultValue && (
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={handleStartEditingDefaultValue}
-                                  className="h-6 px-2"
-                                  disabled={!isEditingAllowed}
-                                >
-                                  <Edit3 className="w-3 h-3 mr-1" />
-                                  Edit
-                                </Button>
-                              )}
+                  {selectedEnvironment === 'staging' && (
+                    <Alert className="mb-4 border-blue-200 bg-blue-50">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-800">
+                        Changes to the <strong>staging</strong> environment will be auto-approved.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {selectedEnvironment === 'production' && (
+                    <Alert className="mb-4 border-blue-200 bg-blue-50">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-800">
+                        Changes to the <strong>production</strong> environment require {canApproveProduction ? 'your approval' : 'admin approval'}.
+                        {!canApproveProduction && ' You can create the request but cannot approve it.'}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {(["development", "staging", "production"] as Environment[]).map((env) => (
+                    <TabsContent key={env} value={env} className="space-y-6">
+                      <Card>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="flex items-center gap-2">
+                                <Flag className="w-5 h-5" />
+                                {currentFlag.name}
+                              </CardTitle>
+                              <CardDescription>{currentFlag.description}</CardDescription>
                             </div>
-                            
-                            {isEditingDefaultValue ? (
-                              <div className="space-y-3">
-                                {currentFlag?.dataType === 'boolean' ? (
-                                  <Select value={tempDefaultValue} onValueChange={setTempDefaultValue}>
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="true">true</SelectItem>
-                                      <SelectItem value="false">false</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                ) : currentFlag?.dataType === 'number' ? (
-                                  <input
-                                    type="number"
-                                    value={tempDefaultValue}
-                                    onChange={(e) => setTempDefaultValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                                    placeholder="Enter a number"
-                                  />
-                                ) : currentFlag?.dataType === 'json' ? (
-                                  <Textarea
-                                    value={tempDefaultValue}
-                                    onChange={(e) => setTempDefaultValue(e.target.value)}
-                                    className="font-mono text-sm min-h-[100px]"
-                                    placeholder="Enter valid JSON"
-                                  />
-                                ) : (
-                                  <input
-                                    type="text"
-                                    value={tempDefaultValue}
-                                    onChange={(e) => setTempDefaultValue(e.target.value)}
-                                    className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
-                                    placeholder="Enter a string value"
-                                  />
-                                )}
-                                
-                                <div className="flex gap-2">
-                                  <Button size="sm" onClick={handleSaveDefaultValue} disabled={!isEditingAllowed}>
-                                    Save
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
-                                    Cancel
-                                  </Button>
-                                </div>
-                                
-                                <p className="text-xs text-muted-foreground">
-                                  {currentFlag?.dataType === 'boolean' && "Select true or false"}
-                                  {currentFlag?.dataType === 'number' && "Enter a valid number"}
-                                  {currentFlag?.dataType === 'string' && "Enter any text value"}
-                                  {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.)"}
-                                </p>
-                              </div>
-                            ) : (
-                              <div className="mt-1 p-3 bg-muted rounded border">
-                                <div className="text-sm font-mono whitespace-pre-wrap">
-                                  {formatValueForDisplay(currentEnvironmentConfig?.defaultValue, currentFlag?.dataType)}
-                                </div>
-                                <div className="flex items-center justify-between mt-2">
-                                  <p className="text-xs text-muted-foreground">
-                                    Type: {currentFlag?.dataType}
-                                  </p>
-                                </div>
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">Enabled</span>
+                              <Switch
+                                checked={currentEnvironmentConfig?.enabled || false}
+                                onCheckedChange={handleToggleEnvironment}
+                                disabled={!canEditFlag}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Rules Section */}
-                    <Card>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">Targeting Rules</CardTitle>
-                          <Button size="sm" onClick={() => setShowNewRuleModal(true)} disabled={!isEditingAllowed}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Rule
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        {currentEnvironmentConfig?.rules && currentEnvironmentConfig.rules.length > 0 ? (
+                        </CardHeader>
+                        <CardContent>
                           <div className="space-y-4">
-                            {currentEnvironmentConfig.rules.map((rule, index) => (
-                              <div key={rule.id} className="border rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">{rule.name}</span>
-                                    <Badge variant={rule.enabled ? "default" : "secondary"}>
-                                      {rule.enabled ? "Active" : "Inactive"}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!isEditingAllowed}>
-                                      <Settings className="w-4 h-4" />
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm font-medium">Default Value</label>
+                                {!isEditingDefaultValue && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleStartEditingDefaultValue}
+                                    className="h-6 px-2"
+                                    disabled={!canEditFlag}
+                                  >
+                                    <Edit3 className="w-3 h-3 mr-1" />
+                                    Edit
+                                  </Button>
+                                )}
+                              </div>
+
+                              {isEditingDefaultValue ? (
+                                <div className="space-y-3">
+                                  {currentFlag?.dataType === 'boolean' ? (
+                                    <Select value={tempDefaultValue} onValueChange={setTempDefaultValue}>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="true">true</SelectItem>
+                                        <SelectItem value="false">false</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : currentFlag?.dataType === 'number' ? (
+                                    <input
+                                      type="number"
+                                      value={tempDefaultValue}
+                                      onChange={(e) => setTempDefaultValue(e.target.value)}
+                                      className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                                      placeholder="Enter a number"
+                                    />
+                                  ) : currentFlag?.dataType === 'json' ? (
+                                    <Textarea
+                                      value={tempDefaultValue}
+                                      onChange={(e) => setTempDefaultValue(e.target.value)}
+                                      className="font-mono text-sm min-h-[100px]"
+                                      placeholder="Enter valid JSON"
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      value={tempDefaultValue}
+                                      onChange={(e) => setTempDefaultValue(e.target.value)}
+                                      className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm"
+                                      placeholder="Enter a string value"
+                                    />
+                                  )}
+
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={handleSaveDefaultValue} disabled={!canEditFlag}>
+                                      Save
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
+                                      Cancel
                                     </Button>
                                   </div>
+
+                                  <p className="text-xs text-muted-foreground">
+                                    {currentFlag?.dataType === 'boolean' && "Select true or false"}
+                                    {currentFlag?.dataType === 'number' && "Enter a valid number"}
+                                    {currentFlag?.dataType === 'string' && "Enter any text value"}
+                                    {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.)"}
+                                  </p>
                                 </div>
+                              ) : (
+                                <div className="mt-1 p-3 bg-muted rounded border">
+                                  <div className="text-sm font-mono whitespace-pre-wrap">
+                                    {formatValueForDisplay(currentEnvironmentConfig?.defaultValue, currentFlag?.dataType)}
+                                  </div>
+                                  <div className="flex items-center justify-between mt-2">
+                                    <p className="text-xs text-muted-foreground">
+                                      Type: {currentFlag?.dataType}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
 
-                                <RuleBuilder rule={rule} attributes={attributes} readonly={true} />
-
-                                <div className="mt-3 p-2 bg-muted rounded">
-                                  <div className="text-xs text-muted-foreground mb-1">Return Value:</div>
+                      {/* Rules Section */}
+                      <Card>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">Targeting Rules</CardTitle>
+                            <Button size="sm" onClick={() => {
+                              if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: 'flag rule changes' })) return
+                              setShowNewRuleModal(true)
+                            }} disabled={!canEditFlag}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Rule
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {currentEnvironmentConfig?.rules && currentEnvironmentConfig.rules.length > 0 ? (
+                            <div className="space-y-4">
+                              {currentEnvironmentConfig.rules.map((rule: any, index: number) => (
+                                <div key={rule.id} className="border rounded-lg p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{rule.name}</span>
+                                      <Badge variant={rule.enabled ? "default" : "secondary"}>
+                                        {rule.enabled ? "Active" : "Inactive"}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!canEditFlag}>
+                                        <Settings className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
                                   <div className="font-mono text-sm">{JSON.stringify(rule.returnValue)}</div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <Settings className="w-8 h-8 mx-auto mb-2" />
-                            <div className="text-sm">No targeting rules configured</div>
-                            <div className="text-xs">Add rules to control who sees this flag</div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Settings className="w-8 h-8 mx-auto mb-2" />
+                              <div className="text-sm">No targeting rules configured</div>
+                              <div className="text-xs">Add rules to control who sees this flag</div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
 
-                  </TabsContent>
-                ))}
-              </Tabs>
+                    </TabsContent>
+                  ))}
+                </Tabs>
               )}
             </div>
           ) : (

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAccess, requirePermission } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Plus, Users, Settings } from "lucide-react"
@@ -22,8 +23,10 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
   const [managingTeam, setManagingTeam] = useState<Team | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const access = useAccess()
 
   const handleCreateTeam = async (teamData: { name: string }) => {
+    if (!requirePermission(access, 'teams', 'create', { label: 'teams' })) return
     setIsCreating(true)
     try {
       const newTeam = await createTeam(teamData)
@@ -39,6 +42,7 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
   }
 
   const handleUpdateTeam = async (teamId: string, updates: Partial<Team> | { upserts: Array<{ user_id: string, role_id: string }>, removes: string[] }) => {
+    if (!requirePermission(access, 'teams', 'update', { label: 'teams' })) return
     setIsUpdating(true)
     try {
       if ('upserts' in updates || 'removes' in updates) {
@@ -98,7 +102,10 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
           <h1 className="text-3xl font-bold">Teams</h1>
           <p className="text-muted-foreground">Manage your organization teams</p>
         </div>
-        <Button onClick={() => setShowNewTeamModal(true)} disabled={isCreating}>
+        <Button onClick={() => {
+          if (!requirePermission(access, 'teams', 'create', { label: 'teams' })) return
+          setShowNewTeamModal(true)
+        }} disabled={isCreating || access.loading || !access.can('teams', 'create')}>
           <Plus className="w-4 h-4 mr-2" />
           {isCreating ? "Creating..." : "New Team"}
         </Button>
@@ -138,7 +145,10 @@ export function TeamManagement({ teams, users, onTeamsChange }: TeamManagementPr
           <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No teams yet</h3>
           <p className="text-muted-foreground mb-4">Create your first team to organize access to your flags</p>
-          <Button onClick={() => setShowNewTeamModal(true)} disabled={isCreating}>
+          <Button onClick={() => {
+            if (!requirePermission(access, 'teams', 'create', { label: 'teams' })) return
+            setShowNewTeamModal(true)
+          }} disabled={isCreating || access.loading || !access.can('teams', 'create')}>
             <Plus className="w-4 h-4 mr-2" />
             {isCreating ? "Creating..." : "Create Team"}
           </Button>
