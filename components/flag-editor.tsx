@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { usePermissions, useAccess, requirePermission } from "../lib/permissions"
+import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -106,7 +108,7 @@ export function FlagEditor({
           prevFlags.map(flag => {
             if (flag.id === selectedFlag) {
               let updatedEnvironments = flag.environments ?? []
-        
+
               // Ensure all envs exist
               allEnvironments.forEach(envName => {
                 if (!updatedEnvironments.some((env: any) => env.environment === envName)) {
@@ -115,15 +117,15 @@ export function FlagEditor({
                     enabled: false,
                     defaultValue:
                       flag.dataType === "boolean" ? false :
-                      flag.dataType === "string" ? "" :
-                      flag.dataType === "number" ? 0 :
-                      flag.dataType === "json" ? {} : null,
+                        flag.dataType === "string" ? "" :
+                          flag.dataType === "number" ? 0 :
+                            flag.dataType === "json" ? {} : null,
                     rules: [],
                     trafficSplits: []
                   })
                 }
               })
-        
+
               return { ...flag, environments: updatedEnvironments }
             }
             return flag
@@ -141,6 +143,9 @@ export function FlagEditor({
 
     fetchFlagDefinition()
   }, [selectedFlag, selectedProject, flags, projects])
+
+  // Get the current user from the session
+  const { data: session } = useSession()
 
   const projectFlags = selectedProject ? localFlags.filter((flag) => flag.projectId === selectedProject) : localFlags
 
@@ -164,7 +169,6 @@ export function FlagEditor({
 
   // If environment doesn't exist, create it
   if (currentFlag && !currentEnvironmentConfig) {
-    console.log(`Environment ${selectedEnvironment} not found, creating it...`)
     const newEnvironmentConfig = {
       environment: selectedEnvironment,
       enabled: false,
@@ -216,7 +220,7 @@ export function FlagEditor({
         description: flagData.description,
         data_type: flagData.dataType,
         project_id: flagData.projectId,
-        created_by: "00000000-0000-0000-0000-000000000000",
+        created_by: getUserIdFromSession(session) || "system-user",
         project_key: project.key,
       };
 
@@ -501,7 +505,7 @@ export function FlagEditor({
         entityType: 'feature_flag',
         entityId: currentFlag.id,
         projectId: project.id,
-        requestedBy: '00000000-0000-0000-0000-000000000000',
+        requestedBy: getUserIdFromSession(session) ?? "",
         action: beforeSnapshot ? 'update_flag' : 'create_flag',
         beforeSnapshot,
         afterSnapshot,
@@ -574,6 +578,10 @@ export function FlagEditor({
   }
 
   const selectedProjectData = projects.find((p) => p.id === selectedProject)
+  // Astrolabe detection (case-insensitive, by name or key)
+  const isAstrolabe = selectedProjectData && (
+    selectedProjectData.name?.toLowerCase() === 'astrolabe' || selectedProjectData.key?.toLowerCase() === 'astrolabe'
+  )
 
   const { can_create_flags, can_approve_staging, can_approve_production, isLoading } = usePermissions()
 
@@ -582,7 +590,8 @@ export function FlagEditor({
   // Production edits allowed only if user can request approval (no direct update)
   const canProposeProdChange = access.can('approvals', 'request')
   const baseFlagStatusOk = currentFlag?.status !== 'pending'
-  const canEditFlag = (!isProductionEnv && baseFlagStatusOk) || (isProductionEnv && canProposeProdChange && baseFlagStatusOk)
+  const canEditFlagBase = (!isProductionEnv && baseFlagStatusOk) || (isProductionEnv && canProposeProdChange && baseFlagStatusOk)
+  const canEditFlag = canEditFlagBase && !isAstrolabe
   const canApproveProduction = can_approve_production
   const canApproveStaging = can_approve_staging
 
@@ -598,7 +607,7 @@ export function FlagEditor({
         <Button onClick={() => {
           if (!requirePermission(access, 'flags', 'create', { label: 'flags' })) return
           setShowNewFlagModal(true)
-        }} disabled={!selectedProject || isCreatingFlag || access.loading || !access.can('flags', 'create')}>
+        }} disabled={isAstrolabe || !selectedProject || isCreatingFlag || access.loading || !access.can('flags', 'create')}>
           <Plus className="w-4 h-4 mr-2" />
           {isCreatingFlag ? "Creating..." : "New Flag"}
         </Button>
@@ -660,14 +669,14 @@ export function FlagEditor({
             </Button>
 
             <div className="flex gap-2 mt-2">
-              <Button 
-                onClick={handleSaveChanges} 
+              <Button
+                onClick={handleSaveChanges}
                 disabled={isSaving}
                 size="sm"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
               </Button>
-              <Button 
+              <Button
                 onClick={handleDiscardChanges}
                 variant="outline"
                 size="sm"
@@ -676,6 +685,15 @@ export function FlagEditor({
               </Button>
             </div>
 
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isAstrolabe && (
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
+            Astrolabe project is read-only in Flag Editor. Creation, rule changes, environment toggles, and saves are disabled.
           </AlertDescription>
         </Alert>
       )}
@@ -806,7 +824,7 @@ export function FlagEditor({
                               <span className="text-sm text-muted-foreground">Enabled</span>
                               <Switch
                                 checked={currentEnvironmentConfig?.enabled || false}
-                                onCheckedChange={handleToggleEnvironment}
+                                onCheckedChange={isAstrolabe ? undefined : handleToggleEnvironment}
                                 disabled={!canEditFlag}
                               />
                             </div>
@@ -821,7 +839,7 @@ export function FlagEditor({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={handleStartEditingDefaultValue}
+                                    onClick={isAstrolabe ? undefined : handleStartEditingDefaultValue}
                                     className="h-6 px-2"
                                     disabled={!canEditFlag}
                                   >
@@ -869,7 +887,7 @@ export function FlagEditor({
                                   )}
 
                                   <div className="flex gap-2">
-                                    <Button size="sm" onClick={handleSaveDefaultValue} disabled={!canEditFlag}>
+                                    <Button size="sm" onClick={isAstrolabe ? undefined : handleSaveDefaultValue} disabled={!canEditFlag}>
                                       Save
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
@@ -907,6 +925,7 @@ export function FlagEditor({
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">Targeting Rules</CardTitle>
                             <Button size="sm" onClick={() => {
+                              if (isAstrolabe) return
                               if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: 'flag rule changes' })) return
                               setShowNewRuleModal(true)
                             }} disabled={!canEditFlag}>
@@ -928,7 +947,7 @@ export function FlagEditor({
                                       </Badge>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                      <Button variant="outline" size="sm" onClick={() => handleEditRule(rule)} disabled={!canEditFlag}>
+                                      <Button variant="outline" size="sm" onClick={isAstrolabe ? undefined : () => handleEditRule(rule)} disabled={!canEditFlag}>
                                         <Settings className="w-4 h-4" />
                                       </Button>
                                     </div>

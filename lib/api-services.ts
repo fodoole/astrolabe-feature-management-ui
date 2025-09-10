@@ -290,8 +290,6 @@ export async function fetchApprovals(status?: string, projectId?: string, userId
       endpoint += `&user_id=${userId}`
     }
     const response = await authenticatedApiRequest<{ approvalRequests: ApprovalRequestDTO[], totalCount: number }>(endpoint)
-    console.log('fetchApprovals response:', response)
-    console.log('First approval item:', response.approvalRequests[0])
 
     if (!response || !response.approvalRequests) {
       console.warn('Unexpected response structure for approvals:', response)
@@ -299,10 +297,10 @@ export async function fetchApprovals(status?: string, projectId?: string, userId
     }
 
     return response.approvalRequests.map(approval => {
-      console.log('Mapping approval:', approval)
       return {
         id: approval.id,
         flagId: approval.entityType === 'feature_flag' ? approval.entityId : undefined,
+        entityname: approval.entityName, // Include the entity name
         projectId: approval.projectId,
         requestedBy: approval.requestedBy,
         requestedAt: new Date(approval.requestedAt),
@@ -326,10 +324,10 @@ export async function fetchApprovals(status?: string, projectId?: string, userId
 
 export async function getApprovalById(approvalId: string): Promise<ApprovalRequest> {
   const response = await authenticatedApiRequest<any>(`/approvals/${approvalId}`)
-  console.log('resp: ', response)
   return {
     id: response.id,
     flagId: response.entityType === 'feature_flag' ? response.entity_id : undefined,
+    entityname: response.entityName, // Add entityname directly from response
     projectId: response.projectId,
     requestedBy: response.requestedBy,
     requestedAt: new Date(response.requestedAt),
@@ -426,8 +424,8 @@ export async function createGlobalAttribute(data: {
   possibleValues?: string[]
 }): Promise<GlobalAttribute> {
   // Centralize requested_by enrichment here so UI stays unaware.
-  const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
-  const payload = { ...data, requested_by: SYSTEM_ACTOR_ID }
+
+  const payload = { ...data }
   // eslint-disable-next-line no-console
 
   const response = await authenticatedApiRequest<GlobalAttributeDTO>('/global-attributes/', {

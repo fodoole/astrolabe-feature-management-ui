@@ -13,15 +13,15 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Flag, Users, Settings, FileText, CheckCircle, Database, BookOpen } from 'lucide-react'
+import { Flag, Settings, CheckCircle, Database, BookOpen } from 'lucide-react'
 import { ProjectOverview } from "./components/project-overview"
-import { TeamManagement } from "./components/team-management"
 import { AttributeManager } from "./components/attribute-manager"
 import { FlagEditor } from "./components/flag-editor"
 import { ApprovalCenter } from "./components/approval-center"
 import { FlagDashboard } from "./components/flag-dashboard"
 import { GetStarted } from "./components/get-started"
-import { 
+
+import {
   fetchUsers,
   fetchTeams,
   fetchTeamsByProject,
@@ -38,7 +38,6 @@ const navigationItems = [
   { id: "dashboard", label: "Dashboard", icon: Flag },
   { id: "get-started", label: "Get Started", icon: BookOpen },
   { id: "projects", label: "Projects", icon: Flag },
-  { id: "teams", label: "Teams", icon: Users },
   { id: "attributes", label: "Attributes", icon: Database },
   { id: "flags", label: "Flag Editor", icon: Settings },
   { id: "approvals", label: "Change Requests", icon: CheckCircle },
@@ -51,7 +50,7 @@ export default function FeatureFlagDashboard() {
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [users, setUsers] = useState<User[]>([])
   const [teams, setTeams] = useState<Team[]>([])
   const [projectTeams, setProjectTeams] = useState<Team[]>([])
@@ -65,7 +64,7 @@ export default function FeatureFlagDashboard() {
       try {
         setLoading(true)
         setError(null)
-        
+
         const [
           usersData,
           teamsData,
@@ -77,12 +76,12 @@ export default function FeatureFlagDashboard() {
           fetchProjects(),
           fetchGlobalAttributes()
         ])
-        
+
         setUsers(usersData)
         setTeams(teamsData)
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
-        
+
         if (projectsData.length > 0 && !selectedProject) {
           setSelectedProject(projectsData[0].id)
         }
@@ -93,7 +92,7 @@ export default function FeatureFlagDashboard() {
         setLoading(false)
       }
     }
-    
+
     loadData()
   }, [])
 
@@ -126,7 +125,7 @@ export default function FeatureFlagDashboard() {
         setProjectTeams([])
       }
     }
-    
+
     loadProjectTeams()
   }, [selectedProject])
 
@@ -139,7 +138,7 @@ export default function FeatureFlagDashboard() {
         console.error('Failed to load approvals:', err)
       }
     }
-    
+
     if (activeTab === "approvals" || activeTab === "dashboard") {
       loadApprovals()
     }
@@ -213,7 +212,7 @@ export default function FeatureFlagDashboard() {
             {!loading && !error && (
               <>
                 {activeTab === "get-started" && <GetStarted />}
-                
+
                 {activeTab === "projects" && (
                   <ProjectOverview
                     projects={projects}
@@ -225,7 +224,6 @@ export default function FeatureFlagDashboard() {
                     onProjectsChange={setProjects}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={selectedProject ? projectTeams : teams} users={users} onTeamsChange={selectedProject ? setProjectTeams : setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
@@ -244,7 +242,6 @@ export default function FeatureFlagDashboard() {
                     projects={projects}
                     users={users}
                     flags={featureFlags}
-                    currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
                     selectedProject={selectedProject || undefined}
                     selectedUser={selectedUser || undefined}

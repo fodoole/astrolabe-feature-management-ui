@@ -124,6 +124,7 @@ export interface ChangeLog {
 export interface ApprovalRequest {
   id: string
   flagId?: string
+  entityname?: string // Entity name (flag or attribute name)
   projectId: string
   requestedBy: string
   requestedAt: Date

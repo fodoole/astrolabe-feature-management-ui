@@ -38,7 +38,7 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
         name: name.trim(),
         key: key.trim(),
         description: description.trim(),
-        teamIds: selectedTeams,
+        teamIds: [], // Empty array as teams section is now hidden
       })
       setName("")
       setKey("")
@@ -119,6 +119,7 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
                 rows={3}
               />
             </div>
+            {/* Teams section hidden as per requirements
             <div className="grid gap-2">
               <Label>Assign Teams</Label>
               <div className="space-y-2 max-h-32 overflow-y-auto">
@@ -136,6 +137,7 @@ export function NewProjectModal({ open, onOpenChange, teams, onCreateProject }: 
                 ))}
               </div>
             </div>
+            */}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

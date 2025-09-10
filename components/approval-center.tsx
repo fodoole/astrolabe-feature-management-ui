@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -36,12 +38,18 @@ const statusColors = {
   rejected: "destructive" as const,
 }
 
-export function ApprovalCenter({ approvals, projects, users, flags, currentUserId = "00000000-0000-0000-0000-000000000000", onApprovalsChange, selectedProject, selectedUser, onUserChange }: ApprovalCenterProps) {
+export function ApprovalCenter({ approvals, projects, users, flags, currentUserId: propUserId, onApprovalsChange, selectedProject, selectedUser, onUserChange }: ApprovalCenterProps) {
 
   const router = useRouter()
+  const { data: session } = useSession()
   const [selectedStatus, setSelectedStatus] = useState<ApprovalStatus | "all">("all")
   const [reviewingApproval, setReviewingApproval] = useState<ApprovalRequest | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
+
+
+  // Get real user ID from our utility hook or fall back to prop
+  const userId = useUserId()
+  const currentUserId = userId || propUserId || null
 
   const getUserById = (userId?: string) => userId ? users.find((user) => user.id === userId) || null : null
   const getProjectById = (projectId?: string) => projectId ? projects.find((project) => project.id === projectId) || null : null
@@ -86,6 +94,13 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
 
   const handleApprove = async (approvalId: string, comment: string) => {
     try {
+      // Check if currentUserId is available
+      if (!currentUserId) {
+        handleApiError(new Error('User authentication issue - please sign out and sign in again'),
+          'Cannot approve: Your user ID is not available')
+        return
+      }
+
       const updatedApproval = await approveRequest(approvalId, currentUserId, comment)
       const updatedApprovals = approvals.map(approval =>
         approval.id === approvalId ? updatedApproval : approval
@@ -100,6 +115,13 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
 
   const handleReject = async (approvalId: string, comment: string) => {
     try {
+      // Check if currentUserId is available
+      if (!currentUserId) {
+        handleApiError(new Error('User authentication issue - please sign out and sign in again'),
+          'Cannot reject: Your user ID is not available')
+        return
+      }
+
       const updatedApproval = await rejectRequest(approvalId, currentUserId, comment)
       const updatedApprovals = approvals.map(approval =>
         approval.id === approvalId ? updatedApproval : approval
@@ -181,7 +203,9 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Flag className="w-4 h-4" />
-                      <CardTitle className="text-lg">{flag?.name}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {approval.entityname || flag?.name || 'Unknown Entity'}
+                      </CardTitle>
                       <Badge variant={statusColors[approval.status]} className="gap-1">
                         <StatusIcon className="w-3 h-3" />
                         {approval.status}

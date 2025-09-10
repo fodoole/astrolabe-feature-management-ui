@@ -18,9 +18,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { Flag, Users, Settings, FileText, CheckCircle, Database, BookOpen } from 'lucide-react'
+import { Flag, Settings, CheckCircle, Database, BookOpen } from 'lucide-react'
 import { ProjectOverview } from "./project-overview"
-import { TeamManagement } from "./team-management"
 import { AttributeManager } from "./attribute-manager"
 import { FlagEditor } from "./flag-editor"
 import { ChangeLog } from "./change-log"
@@ -44,7 +43,6 @@ const navigationItems = [
   // { id: "dashboard", label: "Dashboard", icon: Flag },
   { id: "get-started", label: "Get Started", icon: BookOpen },
   { id: "projects", label: "Projects", icon: Flag },
-  { id: "teams", label: "Teams", icon: Users },
   { id: "attributes", label: "Attributes", icon: Database },
   { id: "flags", label: "Flag Editor", icon: Settings },
   { id: "approvals", label: "Change Requests", icon: CheckCircle },
@@ -239,7 +237,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
-              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "teams" && activeTab !== "attributes"  &&  (
+              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "attributes" && (
                 <>
                   <div className="h-4 w-px bg-border" />
                   <Select value={selectedProject || ""} onValueChange={handleProjectChange}>
@@ -258,7 +256,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
               )}
             </div>
             <div className="text-sm text-muted-foreground">
-              {activeTab !== "get-started" && activeTab !== "projects" && activeTab !== "teams" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
+              {activeTab !== "get-started" && activeTab !== "projects" && selectedProject && projects.find((p) => p.id === selectedProject)?.name}
             </div>
           </header>
 
@@ -294,7 +292,6 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     onProjectsChange={setProjects}
                   />
                 )}
-                {activeTab === "teams" && <TeamManagement teams={teams} users={users} onTeamsChange={setTeams} />}
                 {activeTab === "attributes" && <AttributeManager attributes={globalAttributes} onAttributesChange={setGlobalAttributes} />}
                 {activeTab === "flags" && (
                   <FlagEditor
@@ -313,7 +310,6 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     projects={projects}
                     users={users}
                     flags={featureFlags}
-                    currentUserId="00000000-0000-0000-0000-000000000000"
                     onApprovalsChange={setApprovals}
                     selectedProject={selectedProject || undefined}
                     selectedUser={selectedUser || undefined}
