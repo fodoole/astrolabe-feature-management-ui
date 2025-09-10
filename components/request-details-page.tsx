@@ -10,7 +10,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
-// Removed react-diff-viewer and json-diff-kit (incompatible peer deps with React 19)
 import type { ApprovalRequest } from "../types"
 import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
