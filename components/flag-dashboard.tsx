@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAccess, requirePermission } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,6 +32,7 @@ export function FlagDashboard({
 }: FlagDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [showNewFlagModal, setShowNewFlagModal] = useState(false)
+  const access = useAccess()
 
   const selectedProjectData = selectedProject ? projects.find((p) => p.id === selectedProject) : null
   const projectFlags = selectedProject ? flags.filter((flag) => flag.projectId === selectedProject) : []
@@ -54,18 +56,18 @@ export function FlagDashboard({
   const getApprovalStatus = (flagId: string) => {
     const flagApprovals = approvals.filter(approval => approval.flagId === flagId)
     if (flagApprovals.length === 0) return null
-    
-    const latestApproval = flagApprovals.sort((a, b) => 
+
+    const latestApproval = flagApprovals.sort((a, b) =>
       b.requestedAt.getTime() - a.requestedAt.getTime()
     )[0]
-    
+
     return latestApproval.status
   }
 
   const getApprovalStatusColor = (status: ApprovalStatus) => {
     switch (status) {
       case "pending": return "default"
-      case "approved": return "default" 
+      case "approved": return "default"
       case "rejected": return "destructive"
       default: return "outline"
     }
@@ -91,6 +93,7 @@ export function FlagDashboard({
     dataType: FlagDataType
     projectId: string
   }) => {
+    if (!requirePermission(access, 'flags', 'create', { label: 'flags' })) return
     try {
       console.log("Creating flag:", flagData)
     } catch (error) {
@@ -124,7 +127,10 @@ export function FlagDashboard({
           <h1 className="text-3xl font-bold">{selectedProjectData?.name}</h1>
           <p className="text-muted-foreground">{selectedProjectData?.description}</p>
         </div>
-        <Button onClick={() => setShowNewFlagModal(true)} disabled={!selectedProject}>
+        <Button onClick={() => {
+          if (!requirePermission(access, 'flags', 'create', { label: 'flags' })) return
+          setShowNewFlagModal(true)
+        }} disabled={!selectedProject || access.loading || !access.can('flags', 'create')}>
           <Plus className="w-4 h-4 mr-2" />
           New Flag
         </Button>
@@ -276,7 +282,10 @@ export function FlagDashboard({
                 <Flag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No feature flags yet</h3>
                 <p className="text-muted-foreground mb-4">Create your first feature flag to get started</p>
-                <Button onClick={() => setShowNewFlagModal(true)}>
+                <Button onClick={() => {
+                  if (!requirePermission(access, 'flags', 'create', { label: 'flags' })) return
+                  setShowNewFlagModal(true)
+                }} disabled={access.loading || !access.can('flags', 'create')}>
                   <Plus className="w-4 h-4 mr-2" />
                   Create Flag
                 </Button>

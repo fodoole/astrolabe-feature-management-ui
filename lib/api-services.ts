@@ -1,6 +1,6 @@
 // Fetch a single team by ID, including members
 export async function fetchTeamById(teamId: string): Promise<Team> {
-  const response = await apiRequest<any>(`/teams/${teamId}?include=members`)
+  const response = await authenticatedApiRequest<any>(`/teams/${teamId}?include=members`)
   return {
     id: response.id,
     name: response.name,
@@ -22,7 +22,7 @@ export async function fetchTeamById(teamId: string): Promise<Team> {
       : []
   }
 }
-import { apiRequest, PaginatedResponse } from './api-client'
+import { apiRequest, authenticatedApiRequest, PaginatedResponse } from './api-client'
 import type {
   User,
   Team,
@@ -118,7 +118,7 @@ export interface ApprovalRequestDTO {
 
 export async function fetchUsers(limit = 100, offset = 0): Promise<User[]> {
   try {
-    const response = await apiRequest<UserDTO[]>(`/users/?limit=${limit}&offset=${offset}`)
+    const response = await authenticatedApiRequest<UserDTO[]>(`/users/?limit=${limit}&offset=${offset}`)
     console.log('fetchUsers response:', response)
 
     if (!Array.isArray(response)) {
@@ -140,7 +140,7 @@ export async function fetchUsers(limit = 100, offset = 0): Promise<User[]> {
 
 export async function fetchTeams(limit = 100, offset = 0): Promise<Team[]> {
   try {
-    const response = await apiRequest<PaginatedResponse<TeamDTO>>(`/teams/?limit=${limit}&offset=${offset}`)
+    const response = await authenticatedApiRequest<PaginatedResponse<TeamDTO>>(`/teams/?limit=${limit}&offset=${offset}`)
     console.log('fetchTeams response:', response)
 
     if (!response || !response.items) {
@@ -167,7 +167,7 @@ export async function fetchTeamsByProject(projectId: string, includeMembers = fa
     const url = includeMembers
       ? `/projects/${projectId}/teams?include=members`
       : `/projects/${projectId}/teams`
-    const response = await apiRequest<PaginatedResponse<TeamDTO | TeamWithMembersDTO>>(url)
+    const response = await authenticatedApiRequest<PaginatedResponse<TeamDTO | TeamWithMembersDTO>>(url)
     console.log('fetchTeamsByProject response:', response)
 
     if (!response || !response.items) {
@@ -191,7 +191,7 @@ export async function fetchTeamsByProject(projectId: string, includeMembers = fa
 
 export async function fetchProjects(limit = 100, offset = 0): Promise<Project[]> {
   try {
-    const response = await apiRequest<{ projects: ProjectDTO[], totalCount: number }>(`/projects/?limit=${limit}&offset=${offset}`)
+    const response = await authenticatedApiRequest<{ projects: ProjectDTO[], totalCount: number }>(`/projects/?limit=${limit}&offset=${offset}`)
     console.log('fetchProjects response:', response)
 
     if (!response || !response.projects) {
@@ -221,7 +221,7 @@ export async function fetchFeatureFlags(projectKey?: string, limit = 100, offset
       endpoint += `&project_key=${projectKey}`
     }
 
-    const response = await apiRequest<{ featureFlags: FeatureFlagDTO[], totalCount: number }>(endpoint)
+    const response = await authenticatedApiRequest<{ featureFlags: FeatureFlagDTO[], totalCount: number }>(endpoint)
     console.log('fetchFeatureFlags response:', response)
 
     if (!response || !response.featureFlags) {
@@ -255,7 +255,9 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0, search?: st
       endpoint += `&search=${encodeURIComponent(search.trim())}`
     }
 
-    const response = await apiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
+
+    const response = await authenticatedApiRequest<{ globalAttributes: GlobalAttributeDTO[], totalCount: number }>(endpoint)
+
     console.log('fetchGlobalAttributes response:', response)
 
     if (!response || !response.globalAttributes) {
@@ -287,7 +289,7 @@ export async function fetchApprovals(status?: string, projectId?: string, userId
     if (userId) {
       endpoint += `&user_id=${userId}`
     }
-    const response = await apiRequest<{ approvalRequests: ApprovalRequestDTO[], totalCount: number }>(endpoint)
+    const response = await authenticatedApiRequest<{ approvalRequests: ApprovalRequestDTO[], totalCount: number }>(endpoint)
     console.log('fetchApprovals response:', response)
     console.log('First approval item:', response.approvalRequests[0])
 
@@ -323,7 +325,7 @@ export async function fetchApprovals(status?: string, projectId?: string, userId
 }
 
 export async function getApprovalById(approvalId: string): Promise<ApprovalRequest> {
-  const response = await apiRequest<any>(`/approvals/${approvalId}`)
+  const response = await authenticatedApiRequest<any>(`/approvals/${approvalId}`)
   console.log('resp: ', response)
   return {
     id: response.id,
@@ -361,7 +363,7 @@ export async function getApprovalById(approvalId: string): Promise<ApprovalReque
 }
 
 export async function createProject(data: { name: string; key: string; description?: string; teamIds?: string[] }): Promise<Project> {
-  const response = await apiRequest<ProjectDTO>('/projects/', {
+  const response = await authenticatedApiRequest<ProjectDTO>('/projects/', {
     method: 'POST',
     body: JSON.stringify({
       ...data,
@@ -381,7 +383,7 @@ export async function createProject(data: { name: string; key: string; descripti
 }
 
 export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
-  const response = await apiRequest<FeatureFlagDTO>('/feature-flags/', {
+  const response = await authenticatedApiRequest<FeatureFlagDTO>('/feature-flags/', {
     method: 'POST',
     body: JSON.stringify({
       ...data,
@@ -405,7 +407,7 @@ export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
 }
 
 export async function createTeam(data: { name: string }): Promise<Team> {
-  const response = await apiRequest<TeamDTO>('/teams/', {
+  const response = await authenticatedApiRequest<TeamDTO>('/teams/', {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -423,9 +425,14 @@ export async function createGlobalAttribute(data: {
   description?: string
   possibleValues?: string[]
 }): Promise<GlobalAttribute> {
-  const response = await apiRequest<GlobalAttributeDTO>('/global-attributes/', {
+  // Centralize requested_by enrichment here so UI stays unaware.
+  const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000'
+  const payload = { ...data, requested_by: SYSTEM_ACTOR_ID }
+  // eslint-disable-next-line no-console
+
+  const response = await authenticatedApiRequest<GlobalAttributeDTO>('/global-attributes/', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: JSON.stringify(payload)
   })
   return {
     id: response.id,
@@ -433,12 +440,12 @@ export async function createGlobalAttribute(data: {
     type: response.type as AttributeType,
     description: response.description,
     possibleValues: data.possibleValues,
-    project_id:  response.projectId
+    project_id: response.projectId
   }
 }
 
 export async function updateTeam(teamId: string, data: { name?: string }): Promise<Team> {
-  const response = await apiRequest<TeamDTO>(`/teams/${teamId}`, {
+  const response = await authenticatedApiRequest<TeamDTO>(`/teams/${teamId}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   })
@@ -451,7 +458,7 @@ export async function updateTeam(teamId: string, data: { name?: string }): Promi
 }
 
 export async function approveRequest(requestId: string, reviewerId: string, comment?: string): Promise<ApprovalRequest> {
-  const response = await apiRequest<ApprovalRequestDTO>(`/approvals/${requestId}`, {
+  const response = await authenticatedApiRequest<ApprovalRequestDTO>(`/approvals/${requestId}`, {
     method: 'PATCH',
     body: JSON.stringify({
       status: 'approved',
@@ -480,7 +487,7 @@ export async function approveRequest(requestId: string, reviewerId: string, comm
 }
 
 export async function rejectRequest(requestId: string, reviewerId: string, comment?: string): Promise<ApprovalRequest> {
-  const response = await apiRequest<ApprovalRequestDTO>(`/approvals/${requestId}`, {
+  const response = await authenticatedApiRequest<ApprovalRequestDTO>(`/approvals/${requestId}`, {
     method: 'PATCH',
     body: JSON.stringify({
       status: 'rejected',
@@ -518,7 +525,7 @@ export async function createApprovalRequest(data: {
   afterSnapshot?: any
   comments?: string
 }): Promise<ApprovalRequest> {
-  const response = await apiRequest<ApprovalRequestDTO>('/approvals/', {
+  const response = await authenticatedApiRequest<ApprovalRequestDTO>('/approvals/', {
     method: 'POST',
     body: JSON.stringify({
       entity_type: data.entityType,
@@ -555,7 +562,7 @@ export async function getFlagDefinition(
   projectKey: string,
   flagKey: string
 ): Promise<SDKFlagConfig> {
-  const response = await apiRequest<SDKFlagConfig>(
+  const response = await authenticatedApiRequest<SDKFlagConfig>(
     `/feature-flags/${projectKey}/${flagKey}/definition`
   )
   return response
@@ -572,7 +579,7 @@ export interface RoleDTO {
 }
 
 export async function fetchRoles(): Promise<Role[]> {
-  const response = await apiRequest<RoleDTO[]>('/roles/')
+  const response = await authenticatedApiRequest<RoleDTO[]>('/roles/')
   return response.map(role => ({
     id: role.id,
     name: role.name
@@ -590,7 +597,7 @@ export async function updateTeamMembers(
     upserts: payload.upserts.map(u => ({ user_id: u.user_id, role_id: u.role_id })),
     removes: payload.removes
   })
-  const response = await apiRequest<TeamWithMembersDTO>(`/teams/${teamId}/members`, {
+  const response = await authenticatedApiRequest<TeamWithMembersDTO>(`/teams/${teamId}/members`, {
     method: 'PUT',
     body: JSON.stringify(payload)
   })

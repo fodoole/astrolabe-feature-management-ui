@@ -156,3 +156,33 @@ export interface Role {
   id: string
   name: string
 }
+
+// ----- Permissions Model (UI) -----
+// Normalized resource-action permission representation
+export type PermissionAction = 'create' | 'read' | 'update' | 'delete' | 'approve' | 'request'
+
+export interface ResourcePermissionMap {
+  [resource: string]: PermissionAction[] | undefined
+}
+
+// Environment-scoped permissions (e.g., approvals per environment)
+export interface EnvironmentPermissionMap {
+  [environment: string]: PermissionAction[] | undefined
+}
+
+export interface NormalizedPermissions {
+  resources: ResourcePermissionMap
+  environments?: EnvironmentPermissionMap
+  // raw for debugging / fallback (original backend shape if needed)
+  _raw?: any
+  version?: string | number
+}
+
+export interface PermissionContextShape {
+  loading: boolean
+  permissions: NormalizedPermissions | null
+  can: (resource: string, action: PermissionAction, opts?: { environment?: string }) => boolean
+  // convenience helpers
+  any: (checks: Array<[string, PermissionAction, { environment?: string }?]>) => boolean
+  all: (checks: Array<[string, PermissionAction, { environment?: string }?]>) => boolean
+}

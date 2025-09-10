@@ -49,7 +49,7 @@ export async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
-  
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -66,8 +66,76 @@ export async function apiRequest<T>(
 
     if (!response.ok) {
       const errorText = await response.text()
+      let detailMessage: string | undefined
+      try {
+        const parsed = JSON.parse(errorText)
+        // Common FastAPI style { detail: "..." }
+        if (parsed?.detail) detailMessage = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail)
+        // Alternate { message: "..." }
+        else if (parsed?.message) detailMessage = parsed.message
+      } catch (_) { /* plain text */ }
       throw new ApiError(
-        `API request failed: ${response.status} ${response.statusText}`,
+        detailMessage || `API request failed: ${response.status} ${response.statusText}`,
+        response.status,
+        errorText
+      )
+    }
+
+    const data = await response.json()
+    return transformKeys(data) as T
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error
+    }
+    throw new ApiError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+}
+
+export async function authenticatedApiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  if (typeof window === 'undefined') {
+    throw new ApiError('authenticatedApiRequest can only be used on the client side')
+  }
+
+  const { getSession } = await import('next-auth/react')
+  const session = await getSession()
+
+  const url = `${API_BASE_URL}${endpoint}`
+
+  const defaultHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }
+
+  if (session?.appJwt) {
+    defaultHeaders['Authorization'] = `Bearer ${session.appJwt}`
+  } else if (session?.accessToken) {
+    defaultHeaders['Authorization'] = `Bearer ${session.accessToken}`
+  } else {
+    console.warn('No token available in session for authenticated request')
+  }
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      let detailMessage: string | undefined
+      try {
+        const parsed = JSON.parse(errorText)
+        if (parsed?.detail) detailMessage = typeof parsed.detail === 'string' ? parsed.detail : JSON.stringify(parsed.detail)
+        else if (parsed?.message) detailMessage = parsed.message
+      } catch (_) { }
+      throw new ApiError(
+        detailMessage || `API request failed: ${response.status} ${response.statusText}`,
         response.status,
         errorText
       )
