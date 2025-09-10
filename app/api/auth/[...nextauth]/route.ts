@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
     updateAge: 24 * 60 * 60,// Update session every 24 hours
   },
   jwt: {
-    maxAge: 12 * 60 * 60,// JWT expires in 12 hours 
+    maxAge: 24 * 60 * 60,// JWT expires in 24 hours
   },
   callbacks: {
     async signIn({ user, account, profile }) {
@@ -132,7 +132,7 @@ export const authOptions: NextAuthOptions = {
             SHARED_SECRET,
             {
               algorithm: 'HS256',
-              expiresIn: '12h',
+              expiresIn: '24h',
               issuer: 'astrolabe-ui',
               audience: 'astrolabe-api', // Use the expected audience for your backend API
             }
