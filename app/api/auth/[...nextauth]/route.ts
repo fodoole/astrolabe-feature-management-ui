@@ -58,7 +58,7 @@ export const authOptions: NextAuthOptions = {
             provider: 'google',
             provider_id: profile?.sub || account.providerAccountId || '',
             google_groups: userGroups,
-            userId: user.id || '00000000-0000-0000-0000-000000000000',
+            userId: user.id,
           });
 
           // Replace user.id with our backend's user ID if available
