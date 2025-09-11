@@ -658,20 +658,10 @@ export function FlagEditor({
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             You have unsaved changes. Click Save to persist your changes.
-
-            <Button
-              onClick={handleSaveChanges}
-              disabled={!canEditFlag || isSaving}
-              className="ml-2"
-              size="sm"
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-
             <div className="flex gap-2 mt-2">
               <Button
                 onClick={handleSaveChanges}
-                disabled={isSaving}
+                disabled={!canEditFlag || isSaving}
                 size="sm"
               >
                 {isSaving ? "Saving..." : "Save Changes"}
@@ -684,7 +674,6 @@ export function FlagEditor({
                 Discard
               </Button>
             </div>
-
           </AlertDescription>
         </Alert>
       )}
