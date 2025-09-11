@@ -107,12 +107,36 @@ export function FlagEditor({
         setLocalFlags(prevFlags =>
           prevFlags.map(flag => {
             if (flag.id === selectedFlag) {
-              let updatedEnvironments = flag.environments ?? []
-
-              // Ensure all envs exist
-              allEnvironments.forEach(envName => {
-                if (!updatedEnvironments.some((env: any) => env.environment === envName)) {
-                  updatedEnvironments.push({
+              // Use the fetched flag definition data
+              const updatedEnvironments = allEnvironments.map(envName => {
+                // Find the environment data from the fetched definition
+                const fetchedEnv = flagDefinition.environments?.find((env: any) => env.environment === envName)
+                
+                if (fetchedEnv) {
+                  // Use the actual fetched data
+                  return {
+                    environment: envName,
+                    enabled: fetchedEnv.enabled || false,
+                    defaultValue: fetchedEnv.defaultValue !== undefined ? fetchedEnv.defaultValue : (
+                      flag.dataType === "boolean" ? false :
+                        flag.dataType === "string" ? "" :
+                          flag.dataType === "number" ? 0 :
+                            flag.dataType === "json" ? {} : null
+                    ),
+                    rules: fetchedEnv.rules?.map((rule: any) => ({
+                      id: rule.id || `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                      name: rule.name || 'Unnamed Rule',
+                      conditions: rule.conditions || [],
+                      logicalOperator: (rule.logicalOperator || 'AND') as LogicalOperator,
+                      returnValue: rule.returnValue,
+                      enabled: rule.enabled !== false,
+                      trafficSplits: []
+                    })) || [],
+                    trafficSplits: []
+                  }
+                } else {
+                  // Create default environment if not found in fetched data
+                  return {
                     environment: envName,
                     enabled: false,
                     defaultValue:
@@ -122,7 +146,7 @@ export function FlagEditor({
                             flag.dataType === "json" ? {} : null,
                     rules: [],
                     trafficSplits: []
-                  })
+                  }
                 }
               })
 
@@ -941,7 +965,26 @@ export function FlagEditor({
                                       </Button>
                                     </div>
                                   </div>
-                                  <div className="font-mono text-sm">{JSON.stringify(rule.returnValue)}</div>
+                                  
+                                  {/* Rule Conditions */}
+                                  {rule.conditions && rule.conditions.length > 0 && (
+                                    <div className="mb-3">
+                                      <div className="text-xs font-medium text-muted-foreground mb-2">CONDITIONS ({rule.logicalOperator || 'AND'})</div>
+                                      <div className="space-y-1">
+                                        {rule.conditions.map((condition: any, condIndex: number) => (
+                                          <div key={condIndex} className="text-xs bg-muted/50 px-2 py-1 rounded border">
+                                            <span className="font-medium">{condition.attribute}</span>
+                                            <span className="mx-1 text-muted-foreground">{condition.operator}</span>
+                                            <span className="font-mono">{Array.isArray(condition.value) ? condition.value.join(', ') : condition.value}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Return Value */}
+                                  <div className="text-xs text-muted-foreground mb-1">RETURN VALUE</div>
+                                  <div className="font-mono text-sm bg-muted/50 px-2 py-1 rounded border">{JSON.stringify(rule.returnValue)}</div>
                                 </div>
                               ))}
                             </div>
