@@ -1,25 +1,20 @@
 import { google } from 'googleapis'
 
 const ALLOWED_GROUPS = ['eng-leads@qeen.ai','engineering@qeen.ai', 'product-team@qeen.ai','sales@qeen.ai']
-const ALLOWED_DOMAIN = '@qeen.ai'
 
 export async function getUserGoogleGroups(userEmail: string): Promise<string[]> {
-  const enableGroupsCheck = process.env.ENABLE_GOOGLE_GROUPS_CHECK === 'true'
-  
-  if (!enableGroupsCheck) {
-    return userEmail.endsWith(ALLOWED_DOMAIN) ? ['engineering@qeen.ai'] : []
-  }
-
   try {
     const auth = new google.auth.GoogleAuth({
+      clientOptions:{
+        subject: process.env.GOOGLE_ADMIN_EMAIL
+      },
       credentials: {
         client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
         private_key: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       },
-      scopes: ['https://www.googleapis.com/auth/admin.directory.group.readonly'],
-      subject: process.env.GOOGLE_ADMIN_EMAIL,
+      scopes: ['https://www.googleapis.com/auth/admin.directory.group'],
     })
-
+    
     const admin = google.admin({ version: 'directory_v1', auth })
     const userGroups: string[] = []
 
@@ -40,7 +35,7 @@ export async function getUserGoogleGroups(userEmail: string): Promise<string[]> 
     return userGroups
   } catch (error) {
     console.error('Error fetching user groups:', error)
-    return userEmail.endsWith(ALLOWED_DOMAIN) ? ['engineering@qeen.ai'] : []
+    return  []
   }
 }
 
