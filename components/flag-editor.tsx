@@ -972,10 +972,45 @@ export function FlagEditor({
                                       <div className="text-xs font-medium text-muted-foreground mb-2">CONDITIONS ({rule.logicalOperator || 'AND'})</div>
                                       <div className="space-y-1">
                                         {rule.conditions.map((condition: any, condIndex: number) => (
-                                          <div key={condIndex} className="text-xs bg-muted/50 px-2 py-1 rounded border">
-                                            <span className="font-medium">{condition.attribute}</span>
-                                            <span className="mx-1 text-muted-foreground">{condition.operator}</span>
-                                            <span className="font-mono">{Array.isArray(condition.value) ? condition.value.join(', ') : condition.value}</span>
+                                          <div key={condIndex} className="text-xs bg-muted/50 px-3 py-2 rounded-md border">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <Badge variant="outline" className="text-xs font-medium">
+                                                {condition.attribute}
+                                              </Badge>
+                                              <span className="text-muted-foreground font-medium">
+                                                {condition.operator === 'in' ? 'is one of' : 
+                                                 condition.operator === 'not_in' ? 'is not one of' :
+                                                 condition.operator === 'equals' ? '=' :
+                                                 condition.operator === 'not_equals' ? '≠' :
+                                                 condition.operator === 'contains' ? 'contains' :
+                                                 condition.operator === 'not_contains' ? 'does not contain' :
+                                                 condition.operator === 'starts_with' ? 'starts with' :
+                                                 condition.operator === 'ends_with' ? 'ends with' :
+                                                 condition.operator === 'greater_than' ? '>' :
+                                                 condition.operator === 'less_than' ? '<' :
+                                                 condition.operator === 'greater_than_or_equal' ? '≥' :
+                                                 condition.operator === 'less_than_or_equal' ? '≤' :
+                                                 condition.operator}
+                                              </span>
+                                              {condition.operator === 'in' || condition.operator === 'not_in' ? (
+                                                <div className="flex gap-1 flex-wrap">
+                                                  {Array.isArray(condition.value) ? 
+                                                    condition.value.map((val: any, valIndex: number) => (
+                                                      <Badge key={valIndex} variant="secondary" className="text-xs font-mono">
+                                                        {val}
+                                                      </Badge>
+                                                    )) : 
+                                                    <Badge variant="secondary" className="text-xs font-mono">
+                                                      {condition.value}
+                                                    </Badge>
+                                                  }
+                                                </div>
+                                              ) : (
+                                                <Badge variant="secondary" className="text-xs font-mono">
+                                                  {Array.isArray(condition.value) ? condition.value.join(', ') : condition.value}
+                                                </Badge>
+                                              )}
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
