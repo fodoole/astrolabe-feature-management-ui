@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
-// Removed react-diff-viewer and json-diff-kit (incompatible peer deps with React 19)
+import { VisualDiff } from "./visual-diff"
 import type { ApprovalRequest } from "../types"
 import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
@@ -284,10 +284,11 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
                 <Badge variant="outline">{approval.changes?.action?.replace('_', ' ') || 'N/A'}</Badge>
               </div>
               <div className="space-y-2">
-                <span className="text-sm text-muted-foreground">Before:</span>
-                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto mb-2 max-h-64">{oldDisplay}</pre>
-                <span className="text-sm text-muted-foreground">After:</span>
-                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto max-h-64">{newDisplay}</pre>
+                <VisualDiff 
+                  oldValue={approval.changes?.oldValue} 
+                  newValue={approval.changes?.newValue}
+                  title="Configuration Changes"
+                />
               </div>
             </div>
           </div>

@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, XCircle, Flag, User, Calendar } from 'lucide-react'
+import { VisualDiff } from "../visual-diff"
 
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag } from "../../types"
 
@@ -155,10 +156,11 @@ export function ReviewApprovalModal({
                 <Badge variant="outline">{approval.changes.action.replace('_', ' ')}</Badge>
               </div>
               <div className="space-y-2">
-                <span className="text-sm text-muted-foreground"> Before:</span>
-                <pre className="text-xs font-mono bg-gray-100 p-2 rounded mb-2 overflow-x-auto">{oldDisplay}</pre>
-                <span className="text-sm text-muted-foreground"> After:</span>
-                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto">{newDisplay}</pre>
+                <VisualDiff 
+                  oldValue={approval.changes.oldValue} 
+                  newValue={approval.changes.newValue}
+                  title="Configuration Changes"
+                />
               </div>
             </div>
           </div>

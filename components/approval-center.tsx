@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye, ExternalLink, User } from 'lucide-react'
+import { VisualDiff } from "./visual-diff"
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { approveRequest, rejectRequest } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
@@ -266,22 +267,11 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                         <div>
                           <span className="font-medium">Action:</span> {approval.changes.action || 'N/A'}
                         </div>
-                        {approval.changes.oldValue && (
-                          <div>
-                            <span className="font-medium">Before:</span>
-                            <div className="bg-background p-2 rounded mt-1">
-                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.oldValue, null, 2)}</pre>
-                            </div>
-                          </div>
-                        )}
-                        {approval.changes.newValue && (
-                          <div>
-                            <span className="font-medium">After:</span>
-                            <div className="bg-background p-2 rounded mt-1">
-                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue, null, 2)}</pre>
-                            </div>
-                          </div>
-                        )}
+                        <VisualDiff 
+                          oldValue={approval.changes.oldValue} 
+                          newValue={approval.changes.newValue}
+                          title="Requested Changes"
+                        />
                       </>
                     ) : (
                       <div className="text-muted-foreground">No change details available</div>
