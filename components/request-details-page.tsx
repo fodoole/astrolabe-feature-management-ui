@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
 // Removed react-diff-viewer and json-diff-kit (incompatible peer deps with React 19)
 import type { ApprovalRequest } from "../types"
 import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
+import { useAccess, canApproveInEnv } from "../lib/permissions"
 
 interface RequestDetailsPageProps {
   requestId: string
@@ -40,14 +42,14 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { data: session } = useSession()
-
-
+  const access = useAccess()
 
   // Get user ID from our utility hook - always use backend user ID
   const userId = useUserId()
   const currentUserId = userId || null // Use null instead of "system-user" to ensure errors are more obvious
 
-  const environment = approval?.changes?.environment
+  const environment = approval?.changes?.environment || 'production'
+  const canApprove = canApproveInEnv(access, environment)
   const getEnvConfig = (config: any) => {
     if (!config || !environment) return null
     if (typeof config === "object" && config.environments) {
@@ -323,23 +325,41 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
-                <Button
-                  variant="destructive"
-                  onClick={handleReject}
-                  disabled={isSubmitting}
-                  className="gap-2"
-                >
-                  <XCircle className="w-4 h-4" />
-                  {isSubmitting ? "Rejecting..." : "Reject"}
-                </Button>
-                <Button
-                  onClick={handleApprove}
-                  disabled={isSubmitting}
-                  className="gap-2"
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  {isSubmitting ? "Approving..." : "Approve"}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      onClick={handleReject}
+                      disabled={isSubmitting || !canApprove}
+                      className="gap-2"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      {isSubmitting ? "Rejecting..." : "Reject"}
+                    </Button>
+                  </TooltipTrigger>
+                  {!canApprove && (
+                    <TooltipContent>
+                      <p>Admin permission required to reject requests</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleApprove}
+                      disabled={isSubmitting || !canApprove}
+                      className="gap-2"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      {isSubmitting ? "Approving..." : "Approve"}
+                    </Button>
+                  </TooltipTrigger>
+                  {!canApprove && (
+                    <TooltipContent>
+                      <p>Admin permission required to approve requests</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               </div>
             </>
           )}

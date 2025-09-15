@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { CheckCircle, XCircle, Flag, User, Calendar } from 'lucide-react'
+import { useAccess, canApproveInEnv } from "../../lib/permissions"
 
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag } from "../../types"
 
@@ -41,8 +43,10 @@ export function ReviewApprovalModal({
 }: ReviewApprovalModalProps) {
   const [comment, setComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const access = useAccess()
 
-  const environment = approval?.changes?.environment
+  const environment = approval?.changes?.environment || 'production'
+  const canApprove = canApproveInEnv(access, environment)
   const getEnvConfig = (config: any) => {
     if (!config || !environment) return null
     if (typeof config === "object" && config.environments) {
@@ -198,23 +202,41 @@ export function ReviewApprovalModal({
           >
             Cancel
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleReject}
-            disabled={isSubmitting}
-            className="gap-2"
-          >
-            <XCircle className="w-4 h-4" />
-            {isSubmitting ? "Rejecting..." : "Reject"}
-          </Button>
-          <Button
-            onClick={handleApprove}
-            disabled={isSubmitting}
-            className="gap-2"
-          >
-            <CheckCircle className="w-4 h-4" />
-            {isSubmitting ? "Approving..." : "Approve"}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="destructive"
+                onClick={handleReject}
+                disabled={isSubmitting || !canApprove}
+                className="gap-2"
+              >
+                <XCircle className="w-4 h-4" />
+                {isSubmitting ? "Rejecting..." : "Reject"}
+              </Button>
+            </TooltipTrigger>
+            {!canApprove && (
+              <TooltipContent>
+                <p>Admin permission required to reject requests</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={handleApprove}
+                disabled={isSubmitting || !canApprove}
+                className="gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                {isSubmitting ? "Approving..." : "Approve"}
+              </Button>
+            </TooltipTrigger>
+            {!canApprove && (
+              <TooltipContent>
+                <p>Admin permission required to approve requests</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
         </DialogFooter>
       </DialogContent>
     </Dialog>
