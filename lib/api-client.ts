@@ -27,6 +27,14 @@ function toCamelCase(str: string): string {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
 }
 
+// Keys whose values are opaque user-provided data (e.g. JSON flag return values)
+// and should NOT have their nested keys recursively transformed.
+const OPAQUE_VALUE_KEYS = new Set([
+  'default_value', 'defaultValue',
+  'return_value', 'returnValue',
+  'value',
+])
+
 function transformKeys(obj: any): any {
   if (obj === null || typeof obj !== 'object') {
     return obj
@@ -39,7 +47,8 @@ function transformKeys(obj: any): any {
   const transformed: any = {}
   for (const [key, value] of Object.entries(obj)) {
     const camelKey = toCamelCase(key)
-    transformed[camelKey] = transformKeys(value)
+    // Preserve user-provided JSON values as-is (don't transform their keys)
+    transformed[camelKey] = OPAQUE_VALUE_KEYS.has(key) ? value : transformKeys(value)
   }
   return transformed
 }

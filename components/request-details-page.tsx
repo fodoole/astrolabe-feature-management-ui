@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
-// Removed react-diff-viewer and json-diff-kit (incompatible peer deps with React 19)
+import { ProposedChangesDiff } from "./proposed-changes-diff"
 import type { ApprovalRequest } from "../types"
 import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
@@ -46,20 +46,6 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   // Get user ID from our utility hook - always use backend user ID
   const userId = useUserId()
   const currentUserId = userId || null // Use null instead of "system-user" to ensure errors are more obvious
-
-  const environment = approval?.changes?.environment
-  const getEnvConfig = (config: any) => {
-    if (!config || !environment) return null
-    if (typeof config === "object" && config.environments) {
-      return config.environments.find((e: any) => e.environment === environment) || null
-    }
-    return config
-  }
-
-  const beforeConfig = getEnvConfig(approval?.changes?.oldValue)
-  const afterConfig = getEnvConfig(approval?.changes?.newValue)
-  const oldDisplay = JSON.stringify(beforeConfig || {}, null, 2)
-  const newDisplay = JSON.stringify(afterConfig || {}, null, 2)
 
   useEffect(() => {
     const loadRequestData = async () => {
@@ -272,25 +258,12 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
           </div>
 
           {/* Proposed Changes */}
-          <div className="space-y-3">
-            <h4 className="font-medium">Proposed Changes</h4>
-            <div className="border rounded-lg p-4 space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Environment:</span>
-                <Badge variant="secondary">{approval.changes?.environment || 'N/A'}</Badge>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Action:</span>
-                <Badge variant="outline">{approval.changes?.action?.replace('_', ' ') || 'N/A'}</Badge>
-              </div>
-              <div className="space-y-2">
-                <span className="text-sm text-muted-foreground">Before:</span>
-                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto mb-2 max-h-64">{oldDisplay}</pre>
-                <span className="text-sm text-muted-foreground">After:</span>
-                <pre className="text-xs font-mono bg-gray-100 p-2 rounded overflow-x-auto max-h-64">{newDisplay}</pre>
-              </div>
-            </div>
-          </div>
+          <ProposedChangesDiff
+            oldValue={approval.changes?.oldValue}
+            newValue={approval.changes?.newValue}
+            environment={approval.changes?.environment}
+            action={approval.changes?.action}
+          />
 
           {/* Review Section - Only show for pending requests */}
           {approval.status === "pending" && (
