@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,10 @@ export function RuleConditionEditor({
   onLogicalOperatorChange
 }: RuleConditionEditorProps) {
   const attribute = attributes.find(attr => attr.id === condition.attributeId)
-  
+  const datalistId = useId()
+  // Suggested values are hints only — the value input stays free text
+  const suggestedValues = attribute?.type === "string" ? attribute.possibleValues : undefined
+
   const getAvailableOperators = (attributeType?: string): ComparisonOperator[] => {
     const baseOperators: ComparisonOperator[] = ["equals", "not_equals"]
     
@@ -78,6 +82,7 @@ export function RuleConditionEditor({
           values={condition.listValues || []}
           onValuesChange={handleListValuesChange}
           placeholder={`Add ${attribute?.type || 'value'}`}
+          suggestions={suggestedValues}
         />
       )
     }
@@ -157,15 +162,25 @@ export function RuleConditionEditor({
     }
 
     return (
-      <Input
-        value={String(condition.value || "")}
-        onChange={(e) => handleValueChange(e.target.value)}
-        placeholder={
-          attribute?.type === "number" ? "123" :
-          attribute?.possibleValues ? attribute.possibleValues[0] : "value"
-        }
-        className="flex-1"
-      />
+      <>
+        <Input
+          value={String(condition.value || "")}
+          onChange={(e) => handleValueChange(e.target.value)}
+          placeholder={
+            attribute?.type === "number" ? "123" :
+            attribute?.possibleValues ? attribute.possibleValues[0] : "value"
+          }
+          className="flex-1"
+          list={suggestedValues?.length ? datalistId : undefined}
+        />
+        {suggestedValues && suggestedValues.length > 0 && (
+          <datalist id={datalistId}>
+            {suggestedValues.map((value) => (
+              <option key={value} value={value} />
+            ))}
+          </datalist>
+        )}
+      </>
     )
   }
 

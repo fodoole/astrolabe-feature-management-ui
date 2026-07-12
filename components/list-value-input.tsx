@@ -10,9 +10,10 @@ interface ListValueInputProps {
   values: string[]
   onValuesChange: (values: string[]) => void
   placeholder?: string
+  suggestions?: string[]
 }
 
-export function ListValueInput({ values, onValuesChange, placeholder = "Add value" }: ListValueInputProps) {
+export function ListValueInput({ values, onValuesChange, placeholder = "Add value", suggestions }: ListValueInputProps) {
   const [newValue, setNewValue] = useState("")
 
   const addValue = () => {
@@ -34,6 +35,8 @@ export function ListValueInput({ values, onValuesChange, placeholder = "Add valu
     }
   }
 
+  const remainingSuggestions = (suggestions || []).filter(s => !values.includes(s))
+
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
@@ -54,10 +57,27 @@ export function ListValueInput({ values, onValuesChange, placeholder = "Add valu
           {values.map((value) => (
             <Badge key={value} variant="secondary" className="gap-1">
               {value}
-              <X 
-                className="w-3 h-3 cursor-pointer hover:text-destructive" 
-                onClick={() => removeValue(value)} 
+              <X
+                className="w-3 h-3 cursor-pointer hover:text-destructive"
+                onClick={() => removeValue(value)}
               />
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {remainingSuggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-xs text-muted-foreground">Suggestions:</span>
+          {remainingSuggestions.map((suggestion) => (
+            <Badge
+              key={suggestion}
+              variant="outline"
+              className="gap-1 cursor-pointer hover:bg-accent"
+              onClick={() => onValuesChange([...values, suggestion])}
+            >
+              <Plus className="w-3 h-3" />
+              {suggestion}
             </Badge>
           ))}
         </div>
