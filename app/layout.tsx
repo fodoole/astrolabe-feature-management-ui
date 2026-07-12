@@ -1,9 +1,15 @@
 import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
+import { Poppins } from 'next/font/google'
 import { GeistMono } from 'geist/font/mono'
 import { Toaster } from 'sonner'
 import AuthProvider from '@/components/auth-provider'
 import './globals.css'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+})
 
 export const metadata: Metadata = {
   title: 'Astrolabe - Feature Flag Management',
@@ -21,8 +27,8 @@ export default function RootLayout({
       <head>
         <style>{`
 html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
+  font-family: ${poppins.style.fontFamily};
+  --font-sans: ${poppins.variable};
   --font-mono: ${GeistMono.variable};
 }
         `}</style>
