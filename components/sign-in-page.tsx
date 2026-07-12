@@ -10,10 +10,10 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f7f9f7] to-[#d4f9c8] p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-[#1f3a1f] to-[#579140] rounded-xl flex items-center justify-center">
             <svg
               className="w-8 h-8 text-white"
               fill="none"
