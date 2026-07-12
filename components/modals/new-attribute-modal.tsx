@@ -128,13 +128,13 @@ export function NewAttributeModal({ open, onOpenChange, onCreateAttribute }: New
 
             {type === "string" && (
               <div className="grid gap-2">
-                <Label>Possible Values (Optional)</Label>
+                <Label>Suggestions (Optional)</Label>
                 <div className="flex gap-2">
                   <Input
                     value={newValue}
                     onChange={(e) => setNewValue(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Add a possible value"
+                    placeholder="Add a suggested value"
                   />
                   <Button type="button" onClick={handleAddValue} disabled={!newValue.trim()}>
                     Add

@@ -159,9 +159,9 @@ export function AttributeManager({
       const updated = await updateGlobalAttributePossibleValues(editingAttribute.id, possibleValues)
       setEditingAttribute(null)
       setAttributes((prev) => prev.map((attr) => (attr.id === updated.id ? { ...attr, possibleValues: updated.possibleValues } : attr)))
-      showSuccessToast('Possible values updated successfully!')
+      showSuccessToast('Suggestions updated successfully!')
     } catch (error) {
-      handleApiError(error, 'Failed to update possible values')
+      handleApiError(error, 'Failed to update suggestions')
     }
   }
 
@@ -277,10 +277,10 @@ export function AttributeManager({
                                   variant="ghost"
                                   size="sm"
                                   className="h-6 w-6 p-0"
-                                  aria-label="Edit possible values"
+                                  aria-label="Edit suggestions"
                                   disabled={access.loading || !access.can('attributes', 'update')}
                                   onClick={() => {
-                                    if (!requirePermission(access, 'attributes', 'update', { label: 'possible values' })) return
+                                    if (!requirePermission(access, 'attributes', 'update', { label: 'suggestions' })) return
                                     setEditingAttribute(attribute)
                                   }}
                                 >
@@ -290,8 +290,8 @@ export function AttributeManager({
                             </TooltipTrigger>
                             <TooltipContent>
                               {access.can('attributes', 'update')
-                                ? "Edit possible values"
-                                : "Only administrators can edit possible values"}
+                                ? "Edit suggestions"
+                                : "Only administrators can edit suggestions"}
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -302,7 +302,7 @@ export function AttributeManager({
                   <CardContent>
                     {attribute.possibleValues && attribute.possibleValues.length > 0 && (
                       <div>
-                        <div className="text-sm font-medium mb-2">Possible Values:</div>
+                        <div className="text-sm font-medium mb-2">Suggestions:</div>
                         <div className="flex flex-wrap gap-1">
                           {attribute.possibleValues.slice(0, 3).map((value) => (
                             <Badge key={value} variant="secondary" className="text-xs">

@@ -69,7 +69,7 @@ export function EditPossibleValuesModal({ open, onOpenChange, attribute, onSave 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Possible Values</DialogTitle>
+          <DialogTitle>Edit Suggestions</DialogTitle>
           <DialogDescription>
             Suggested values for <strong>{attribute?.name}</strong> when building flag rules. These are hints only and
             do not restrict what can be entered.
@@ -77,13 +77,13 @@ export function EditPossibleValuesModal({ open, onOpenChange, attribute, onSave 
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-2 py-4">
-            <Label>Possible Values</Label>
+            <Label>Suggestions</Label>
             <div className="flex gap-2">
               <Input
                 value={newValue}
                 onChange={(e) => setNewValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Add a possible value"
+                placeholder="Add a suggested value"
               />
               <Button type="button" onClick={handleAddValue} disabled={!newValue.trim()}>
                 Add
