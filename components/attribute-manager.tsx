@@ -9,10 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2, Clock } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Plus, Database, Search, Type, Hash, ToggleLeft, ChevronLeft, ChevronRight, Loader2, Clock, Pencil } from "lucide-react"
 import type { GlobalAttribute, AttributeType } from "../types"
 import { NewAttributeModal } from "./modals/new-attribute-modal"
-import { createGlobalAttribute, fetchGlobalAttributes } from "../lib/api-services"
+import { EditPossibleValuesModal } from "./modals/edit-possible-values-modal"
+import { createGlobalAttribute, fetchGlobalAttributes, updateGlobalAttributePossibleValues } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 import { useAccess, requirePermission } from '@/lib/permissions'
 
@@ -39,6 +41,7 @@ export function AttributeManager({
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState<AttributeType | "all">("all")
   const [showNewAttributeModal, setShowNewAttributeModal] = useState(false)
+  const [editingAttribute, setEditingAttribute] = useState<GlobalAttribute | null>(null)
   const [attributes, setAttributes] = useState<GlobalAttribute[]>(initialAttributes)
   const [isLoading, setIsLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -149,6 +152,19 @@ export function AttributeManager({
     }
   }
 
+  const handleSavePossibleValues = async (possibleValues: string[]) => {
+    if (!editingAttribute) return
+    if (!requirePermission(access, 'attributes', 'update', { label: 'attributes' })) return
+    try {
+      const updated = await updateGlobalAttributePossibleValues(editingAttribute.id, possibleValues)
+      setEditingAttribute(null)
+      setAttributes((prev) => prev.map((attr) => (attr.id === updated.id ? { ...attr, possibleValues: updated.possibleValues } : attr)))
+      showSuccessToast('Possible values updated successfully!')
+    } catch (error) {
+      handleApiError(error, 'Failed to update possible values')
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Approval Status Alert for Recently Created Attribute */}
@@ -247,10 +263,39 @@ export function AttributeManager({
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg font-medium">{attribute.name}</CardTitle>
-                      <Badge variant="outline" className="gap-1">
-                        <Icon className="w-3 h-3" />
-                        {attribute.type}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="gap-1">
+                          <Icon className="w-3 h-3" />
+                          {attribute.type}
+                        </Badge>
+                        {attribute.type === "string" && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {/* span keeps the tooltip working when the button is disabled */}
+                              <span tabIndex={0}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  aria-label="Edit possible values"
+                                  disabled={access.loading || !access.can('attributes', 'update')}
+                                  onClick={() => {
+                                    if (!requirePermission(access, 'attributes', 'update', { label: 'possible values' })) return
+                                    setEditingAttribute(attribute)
+                                  }}
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {access.can('attributes', 'update')
+                                ? "Edit possible values"
+                                : "Only administrators can edit possible values"}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </div>
                     {attribute.description && <CardDescription>{attribute.description}</CardDescription>}
                   </CardHeader>
@@ -330,6 +375,15 @@ export function AttributeManager({
         open={showNewAttributeModal}
         onOpenChange={setShowNewAttributeModal}
         onCreateAttribute={handleCreateAttribute}
+      />
+
+      <EditPossibleValuesModal
+        open={editingAttribute !== null}
+        onOpenChange={(open) => {
+          if (!open) setEditingAttribute(null)
+        }}
+        attribute={editingAttribute}
+        onSave={handleSavePossibleValues}
       />
     </div>
   )

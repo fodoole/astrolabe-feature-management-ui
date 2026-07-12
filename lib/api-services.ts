@@ -93,6 +93,7 @@ export interface GlobalAttributeDTO {
   name: string
   type: string
   description?: string
+  possibleValues?: string[]
   projectId: string // Added to match backend response
 }
 
@@ -269,7 +270,8 @@ export async function fetchGlobalAttributes(limit = 100, offset = 0, search?: st
       id: attr.id,
       name: attr.name,
       type: attr.type as any,
-      description: attr.description
+      description: attr.description,
+      possibleValues: attr.possibleValues
     }))
   } catch (error) {
     console.error('Error fetching global attributes:', error)
@@ -437,7 +439,28 @@ export async function createGlobalAttribute(data: {
     name: response.name,
     type: response.type as AttributeType,
     description: response.description,
-    possibleValues: data.possibleValues,
+    possibleValues: response.possibleValues ?? data.possibleValues,
+    project_id: response.projectId
+  }
+}
+
+export async function updateGlobalAttributePossibleValues(
+  attributeId: string,
+  possibleValues: string[]
+): Promise<GlobalAttribute> {
+  const response = await authenticatedApiRequest<GlobalAttributeDTO>(
+    `/global-attributes/${attributeId}/possible-values`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ possible_values: possibleValues })
+    }
+  )
+  return {
+    id: response.id,
+    name: response.name,
+    type: response.type as AttributeType,
+    description: response.description,
+    possibleValues: response.possibleValues,
     project_id: response.projectId
   }
 }
