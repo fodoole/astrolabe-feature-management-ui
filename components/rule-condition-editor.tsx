@@ -1,9 +1,9 @@
 "use client"
 
-import { useId } from "react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { X } from 'lucide-react'
 import type { RuleCondition, GlobalAttribute, ComparisonOperator } from "../types"
@@ -29,7 +29,6 @@ export function RuleConditionEditor({
   onLogicalOperatorChange
 }: RuleConditionEditorProps) {
   const attribute = attributes.find(attr => attr.id === condition.attributeId)
-  const datalistId = useId()
   // Suggested values are hints only — the value input stays free text
   const suggestedValues = attribute?.type === "string" ? attribute.possibleValues : undefined
 
@@ -162,7 +161,7 @@ export function RuleConditionEditor({
     }
 
     return (
-      <>
+      <div className="space-y-2">
         <Input
           value={String(condition.value || "")}
           onChange={(e) => handleValueChange(e.target.value)}
@@ -171,16 +170,23 @@ export function RuleConditionEditor({
             attribute?.possibleValues ? attribute.possibleValues[0] : "value"
           }
           className="flex-1"
-          list={suggestedValues?.length ? datalistId : undefined}
         />
         {suggestedValues && suggestedValues.length > 0 && (
-          <datalist id={datalistId}>
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-xs text-muted-foreground">Suggestions:</span>
             {suggestedValues.map((value) => (
-              <option key={value} value={value} />
+              <Badge
+                key={value}
+                variant={condition.value === value ? "secondary" : "outline"}
+                className="cursor-pointer hover:bg-accent"
+                onClick={() => handleValueChange(value)}
+              >
+                {value}
+              </Badge>
             ))}
-          </datalist>
+          </div>
         )}
-      </>
+      </div>
     )
   }
 
