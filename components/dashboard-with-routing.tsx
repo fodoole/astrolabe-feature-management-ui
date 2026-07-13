@@ -124,6 +124,15 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
     updateURL(activeTab, nullToUndefined(selectedProject), nullToUndefined(flagId))
   }
 
+  // After a flag is moved, follow it to its destination project so the view and URL
+  // stay valid (rather than leaving a stale project/flag that would 404 on reload).
+  const handleFlagMoved = async (flagId: string, targetProjectId: string) => {
+    setSelectedProject(targetProjectId)
+    setSelectedFlag(flagId)
+    updateURL(activeTab, targetProjectId, flagId)
+    await loadFeatureFlags()
+  }
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -147,11 +156,20 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
         setProjects(projectsData)
         setGlobalAttributes(attributesData)
 
-        // Set default project if none selected and projects exist
-        if (projectsData.length > 0 && !selectedProject) {
+        // Set a default project when none is selected, or when the URL points at a
+        // project that no longer exists (e.g. it was deleted). In the stale case we
+        // also drop the flag param so we don't try to open a flag from a gone project.
+        const selectionIsValid =
+          selectedProject && projectsData.some((p) => p.id === selectedProject)
+        if (projectsData.length > 0 && !selectionIsValid) {
           const defaultProject = projectsData[0].id
           setSelectedProject(defaultProject)
-          updateURL(activeTab, nullToUndefined(defaultProject), nullToUndefined(selectedFlag))
+          if (selectedProject && !selectionIsValid) {
+            setSelectedFlag(null)
+            updateURL(activeTab, defaultProject, "")
+          } else {
+            updateURL(activeTab, defaultProject, nullToUndefined(selectedFlag))
+          }
         }
       } catch (err) {
         console.error('Failed to load data:', err)
@@ -287,6 +305,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     teams={teams}
                     users={users}
                     flags={featureFlags}
+                    selectedProject={selectedProject}
                     onSelectProject={handleProjectChange}
                     onNavigateToFlags={() => handleTabChange("flags")}
                     onProjectsChange={setProjects}
@@ -302,6 +321,7 @@ export default function DashboardWithRouting({ searchParams }: DashboardWithRout
                     selectedFlag={selectedFlag}
                     onSelectFlag={handleFlagChange}
                     onFlagsChange={loadFeatureFlags}
+                    onFlagMoved={handleFlagMoved}
                   />
                 )}
                 {activeTab === "approvals" && (
