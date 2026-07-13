@@ -3,11 +3,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Plus, Users, Flag, Activity } from "lucide-react"
+import { Plus, Users, Flag, Activity, Trash2 } from "lucide-react"
 import { useState } from "react"
-import { useAccess, requirePermission } from '@/lib/permissions'
+import { useSession } from "next-auth/react"
+import { useAccess, requirePermission, isAdmin } from '@/lib/permissions'
 import { NewProjectModal } from "./modals/new-project-modal"
-import { createProject } from "../lib/api-services"
+import { DeleteProjectModal } from "./modals/delete-project-modal"
+import { createProject, deleteProject } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 import type { Project, Team, User, FeatureFlag } from "../types"
 
@@ -16,6 +18,7 @@ interface ProjectOverviewProps {
   teams: Team[]
   users: User[]
   flags: FeatureFlag[]
+  selectedProject?: string | null
   onSelectProject: (projectId: string) => void
   onNavigateToFlags?: () => void
   onProjectsChange?: (projects: Project[]) => void
@@ -26,12 +29,17 @@ export function ProjectOverview({
   teams,
   users,
   flags,
+  selectedProject,
   onSelectProject,
   onNavigateToFlags,
   onProjectsChange,
 }: ProjectOverviewProps) {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null)
+  const [isDeletingProject, setIsDeletingProject] = useState(false)
   const access = useAccess()
+  const { data: session } = useSession()
+  const userIsAdmin = isAdmin(session)
 
   const getProjectStats = (projectId: string) => {
     const projectFlags = flags.filter((flag) => flag.projectId === projectId)
@@ -73,6 +81,29 @@ export function ProjectOverview({
     }
   }
 
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return
+    const deleted = projectToDelete
+    try {
+      setIsDeletingProject(true)
+      await deleteProject(deleted.id)
+
+      const remaining = projects.filter((p) => p.id !== deleted.id)
+      onProjectsChange?.(remaining)
+      // If the deleted project was the active one, move selection off it.
+      if (selectedProject === deleted.id) {
+        onSelectProject(remaining[0]?.id ?? "")
+      }
+
+      setProjectToDelete(null)
+      showSuccessToast(`Project "${deleted.name}" deleted`)
+    } catch (error) {
+      handleApiError(error, 'Failed to delete project')
+    } finally {
+      setIsDeletingProject(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -106,10 +137,26 @@ export function ProjectOverview({
                     <CardTitle className="text-lg">{project.name}</CardTitle>
                     <code className="text-xs bg-muted px-2 py-1 rounded text-muted-foreground">{project.key}</code>
                   </div>
-                  <Badge variant="outline">
-                    <Activity className="w-3 h-3 mr-1" />
-                    {stats.activeFlags}/{stats.totalFlags}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline">
+                      <Activity className="w-3 h-3 mr-1" />
+                      {stats.activeFlags}/{stats.totalFlags}
+                    </Badge>
+                    {userIsAdmin && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-red-600 hover:bg-red-50"
+                        aria-label={`Delete project ${project.name}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setProjectToDelete(project)
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <CardDescription>{project.description}</CardDescription>
               </CardHeader>
@@ -150,6 +197,21 @@ export function ProjectOverview({
         teams={teams}
         onCreateProject={handleCreateProject}
       />
+
+      {userIsAdmin && (
+        <DeleteProjectModal
+          open={Boolean(projectToDelete)}
+          onOpenChange={(open) => {
+            if (!open) setProjectToDelete(null)
+          }}
+          project={projectToDelete}
+          flagCount={
+            projectToDelete ? getProjectStats(projectToDelete.id).totalFlags : 0
+          }
+          onConfirmDelete={handleDeleteProject}
+          isDeleting={isDeletingProject}
+        />
+      )}
     </div>
   )
 }

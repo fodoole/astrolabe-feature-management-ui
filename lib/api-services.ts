@@ -407,6 +407,19 @@ export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
 }
 
 /**
+ * Permanently delete a project and everything scoped to it. Backend restricts
+ * this to administrators.
+ */
+export async function deleteProject(projectId: string): Promise<void> {
+  await authenticatedApiRequest<{ status: string; id: string }>(
+    `/projects/${projectId}/`,
+    {
+      method: 'DELETE',
+    }
+  )
+}
+
+/**
  * Permanently delete a feature flag. Backend restricts this to administrators.
  */
 export async function deleteFeatureFlag(flagId: string): Promise<void> {

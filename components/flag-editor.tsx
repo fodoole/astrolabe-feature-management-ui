@@ -43,6 +43,7 @@ interface FlagEditorProps {
   selectedFlag: string | null
   onSelectFlag: (flagId: string) => void
   onFlagsChange: () => Promise<void>
+  onFlagMoved?: (flagId: string, targetProjectId: string) => Promise<void> | void
 }
 
 export function FlagEditor({
@@ -53,6 +54,7 @@ export function FlagEditor({
   selectedFlag,
   onSelectFlag,
   onFlagsChange,
+  onFlagMoved,
 }: FlagEditorProps) {
   const [selectedEnvironment, setSelectedEnvironment] = useState<Environment>("development")
   const [showNewFlagModal, setShowNewFlagModal] = useState(false)
@@ -180,7 +182,11 @@ export function FlagEditor({
 
   const projectFlags = selectedProject ? localFlags.filter((flag) => flag.projectId === selectedProject) : localFlags
 
-  const currentFlag = selectedFlag ? localFlags.find((flag) => flag.id === selectedFlag) : null
+  // Resolve the selected flag only within the current project so a stale selection
+  // (deleted flag, or a flag that was moved to another project) doesn't render a phantom.
+  const currentFlag = selectedFlag ? projectFlags.find((flag) => flag.id === selectedFlag) : null
+  // A flag id is in the URL/state but it isn't part of the current project's flags.
+  const hasMissingSelection = Boolean(selectedFlag) && !currentFlag
 
   // Debug flag structure
   console.log("Current flag environments:", currentFlag?.environments)
@@ -628,14 +634,16 @@ export function FlagEditor({
 
   const handleDeleteFlag = async () => {
     if (!currentFlag) return
+    const deletedName = currentFlag.name
     try {
       setIsDeletingFlag(true)
       await deleteFeatureFlag(currentFlag.id)
-      showSuccessToast(`Feature flag "${currentFlag.name}" deleted`)
       setShowDeleteFlagModal(false)
-      // Clear the selection since the flag no longer exists, then refresh.
+      // Clear the selection (also strips ?flag= from the URL) so we don't point at
+      // a flag that no longer exists, then refresh the list.
       onSelectFlag("")
       await onFlagsChange()
+      showSuccessToast(`Feature flag "${deletedName}" deleted`)
     } catch (error) {
       handleApiError(error, "Failed to delete feature flag")
     } finally {
@@ -645,15 +653,24 @@ export function FlagEditor({
 
   const handleMoveFlag = async (targetProjectId: string) => {
     if (!currentFlag) return
+    const movedId = currentFlag.id
+    const movedName = currentFlag.name
+    const target = projects.find((p) => p.id === targetProjectId)
     try {
       setIsMovingFlag(true)
-      await moveFeatureFlag(currentFlag.id, targetProjectId)
-      const target = projects.find((p) => p.id === targetProjectId)
-      showSuccessToast(
-        `Feature flag "${currentFlag.name}" moved to ${target?.name ?? "the selected project"}`
-      )
+      await moveFeatureFlag(movedId, targetProjectId)
       setShowMoveFlagModal(false)
-      await onFlagsChange()
+      // Follow the flag to its new project so the view (and the URL) stay valid
+      // instead of leaving a stale ?project=/?flag= that would 404 on reload.
+      if (onFlagMoved) {
+        await onFlagMoved(movedId, targetProjectId)
+      } else {
+        onSelectFlag("")
+        await onFlagsChange()
+      }
+      showSuccessToast(
+        `Feature flag "${movedName}" moved to ${target?.name ?? "the selected project"}`
+      )
     } catch (error) {
       handleApiError(error, "Failed to move feature flag")
     } finally {
@@ -1102,6 +1119,18 @@ export function FlagEditor({
                   ))}
                 </Tabs>
               )}
+            </div>
+          ) : hasMissingSelection ? (
+            <div className="text-center py-12">
+              <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Flag not available here</h3>
+              <p className="text-muted-foreground mb-4">
+                This feature flag no longer exists in this project — it may have been
+                deleted or moved to another project.
+              </p>
+              <Button variant="outline" onClick={() => onSelectFlag("")}>
+                Back to flags
+              </Button>
             </div>
           ) : (
             <div className="text-center py-12">
