@@ -70,7 +70,7 @@ function friendlyMessage(status: number, formatted: any, raw: any) {
   return { message: 'Request failed.' }
 }
 
-async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'PUT', params: { path: string[] }) {
+async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', params: { path: string[] }) {
   const p = await params
   const t0 = performance.now()
   // Reuse incoming request ID if provided; otherwise generate and log absence
@@ -115,9 +115,9 @@ async function proxy(request: NextRequest, method: 'GET' | 'POST' | 'PATCH' | 'P
     }
   }
 
-  // Body (only for POST/PATCH)
+  // Body (for methods that carry one; skip GET/DELETE)
   let body: string | undefined
-  if (method !== 'GET') {
+  if (method !== 'GET' && method !== 'DELETE') {
     // Pass through raw text so we don’t accidentally re-shape it
     body = await request.text()
   }
@@ -235,4 +235,8 @@ export async function PATCH(request: NextRequest, ctx: { params: { path: string[
 
 export async function PUT(request: NextRequest, ctx: { params: { path: string[] } }) {
   return proxy(request, 'PUT', ctx.params)
+}
+
+export async function DELETE(request: NextRequest, ctx: { params: { path: string[] } }) {
+  return proxy(request, 'DELETE', ctx.params)
 }

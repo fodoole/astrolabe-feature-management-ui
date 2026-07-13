@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { usePermissions, useAccess, requirePermission } from "../lib/permissions"
+import { usePermissions, useAccess, requirePermission, isAdmin } from "../lib/permissions"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react'
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2, ArrowRightLeft } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import type {
   Project,
@@ -28,8 +28,10 @@ import { NewFlagModal } from "./modals/new-flag-modal"
 import { NewRuleModal } from "./modals/new-rule-modal"
 import { FlagPreviewModal } from "./modals/flag-preview-modal"
 import { EditRuleModal } from "./modals/edit-rule-modal"
+import { DeleteFlagModal } from "./modals/delete-flag-modal"
+import { MoveFlagModal } from "./modals/move-flag-modal"
 import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
-import { createApprovalRequest, createFeatureFlag, getFlagDefinition } from "../lib/api-services"
+import { createApprovalRequest, createFeatureFlag, getFlagDefinition, deleteFeatureFlag, moveFeatureFlag } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 import { toast } from 'sonner'
 
@@ -67,6 +69,10 @@ export function FlagEditor({
   const [tempDefaultValue, setTempDefaultValue] = useState("")
   const [isLoadingFlagDefinition, setIsLoadingFlagDefinition] = useState(false)
   const [flagDefinitionError, setFlagDefinitionError] = useState<string | null>(null)
+  const [showDeleteFlagModal, setShowDeleteFlagModal] = useState(false)
+  const [showMoveFlagModal, setShowMoveFlagModal] = useState(false)
+  const [isDeletingFlag, setIsDeletingFlag] = useState(false)
+  const [isMovingFlag, setIsMovingFlag] = useState(false)
   const access = useAccess()
 
   useEffect(() => {
@@ -170,6 +176,7 @@ export function FlagEditor({
 
   // Get the current user from the session
   const { data: session } = useSession()
+  const userIsAdmin = isAdmin(session)
 
   const projectFlags = selectedProject ? localFlags.filter((flag) => flag.projectId === selectedProject) : localFlags
 
@@ -619,6 +626,41 @@ export function FlagEditor({
   const canApproveProduction = can_approve_production
   const canApproveStaging = can_approve_staging
 
+  const handleDeleteFlag = async () => {
+    if (!currentFlag) return
+    try {
+      setIsDeletingFlag(true)
+      await deleteFeatureFlag(currentFlag.id)
+      showSuccessToast(`Feature flag "${currentFlag.name}" deleted`)
+      setShowDeleteFlagModal(false)
+      // Clear the selection since the flag no longer exists, then refresh.
+      onSelectFlag("")
+      await onFlagsChange()
+    } catch (error) {
+      handleApiError(error, "Failed to delete feature flag")
+    } finally {
+      setIsDeletingFlag(false)
+    }
+  }
+
+  const handleMoveFlag = async (targetProjectId: string) => {
+    if (!currentFlag) return
+    try {
+      setIsMovingFlag(true)
+      await moveFeatureFlag(currentFlag.id, targetProjectId)
+      const target = projects.find((p) => p.id === targetProjectId)
+      showSuccessToast(
+        `Feature flag "${currentFlag.name}" moved to ${target?.name ?? "the selected project"}`
+      )
+      setShowMoveFlagModal(false)
+      await onFlagsChange()
+    } catch (error) {
+      handleApiError(error, "Failed to move feature flag")
+    } finally {
+      setIsMovingFlag(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -786,10 +828,33 @@ export function FlagEditor({
                       <TabsTrigger value="staging">Staging</TabsTrigger>
                       <TabsTrigger value="production">Production</TabsTrigger>
                     </TabsList>
-                    <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
-                      <Eye className="w-4 h-4 mr-2" />
-                      Preview
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setShowPreviewModal(true)}>
+                        <Eye className="w-4 h-4 mr-2" />
+                        Preview
+                      </Button>
+                      {userIsAdmin && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowMoveFlagModal(true)}
+                          >
+                            <ArrowRightLeft className="w-4 h-4 mr-2" />
+                            Move
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                            onClick={() => setShowDeleteFlagModal(true)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Auto-approval messaging */}
@@ -1088,6 +1153,27 @@ export function FlagEditor({
             onUpdateRule={handleUpdateRule}
             onDeleteRule={handleDeleteRule}
           />
+
+          {userIsAdmin && (
+            <>
+              <MoveFlagModal
+                open={showMoveFlagModal}
+                onOpenChange={setShowMoveFlagModal}
+                flag={currentFlag}
+                projects={projects}
+                onConfirmMove={handleMoveFlag}
+                isMoving={isMovingFlag}
+              />
+
+              <DeleteFlagModal
+                open={showDeleteFlagModal}
+                onOpenChange={setShowDeleteFlagModal}
+                flag={currentFlag}
+                onConfirmDelete={handleDeleteFlag}
+                isDeleting={isDeletingFlag}
+              />
+            </>
+          )}
         </>
       )}
     </div>

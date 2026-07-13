@@ -406,6 +406,48 @@ export async function createFeatureFlag(data: any): Promise<FeatureFlag> {
   }
 }
 
+/**
+ * Permanently delete a feature flag. Backend restricts this to administrators.
+ */
+export async function deleteFeatureFlag(flagId: string): Promise<void> {
+  await authenticatedApiRequest<{ status: string; id: string }>(
+    `/feature-flags/${flagId}/`,
+    {
+      method: 'DELETE',
+    }
+  )
+}
+
+/**
+ * Move a feature flag to a different project. Backend restricts this to administrators.
+ */
+export async function moveFeatureFlag(
+  flagId: string,
+  projectId: string
+): Promise<FeatureFlag> {
+  const response = await authenticatedApiRequest<FeatureFlagDTO>(
+    `/feature-flags/${flagId}/project/`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ project_id: projectId }),
+    }
+  )
+
+  return {
+    id: response.id,
+    key: response.key,
+    name: response.name,
+    description: response.description,
+    dataType: response.dataType as any,
+    projectId: response.projectId,
+    environments: [],
+    status: response.status as ApprovalStatus,
+    createdAt: new Date(response.createdAt),
+    updatedAt: new Date(response.updatedAt),
+    createdBy: response.createdBy,
+  }
+}
+
 export async function createTeam(data: { name: string }): Promise<Team> {
   const response = await authenticatedApiRequest<TeamDTO>('/teams/', {
     method: 'POST',
