@@ -43,11 +43,14 @@ export function DeleteProjectModal({
 
   if (!project) return null
 
+  // A project that still has feature flags cannot be deleted — the flags must be
+  // deleted or moved first (enforced by the backend, mirrored here for clarity).
+  const hasFlags = flagCount > 0
   const matches = confirmName.trim() === project.name
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!matches || isDeleting) return
+    if (hasFlags || !matches || isDeleting) return
     await onConfirmDelete()
   }
 
@@ -60,45 +63,56 @@ export function DeleteProjectModal({
             Delete Project
           </DialogTitle>
           <DialogDescription>
-            This permanently deletes the project and everything scoped to it. This
-            action cannot be undone.
+            This permanently deletes the project. This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <Alert className="border-red-200 bg-red-50">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                Deleting <strong>{project.name}</strong>
-                {project.key ? (
-                  <>
-                    {" "}
-                    (<code>{project.key}</code>)
-                  </>
-                ) : null}{" "}
-                will also delete its{" "}
-                <strong>
-                  {flagCount} feature flag{flagCount === 1 ? "" : "s"}
-                </strong>
-                , along with their definitions, global attributes, and approval
-                history.
-              </AlertDescription>
-            </Alert>
+            {hasFlags ? (
+              <Alert className="border-amber-200 bg-amber-50">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  <strong>{project.name}</strong> still has{" "}
+                  <strong>
+                    {flagCount} feature flag{flagCount === 1 ? "" : "s"}
+                  </strong>
+                  . Delete or move{" "}
+                  {flagCount === 1 ? "it" : "them"} to another project before you
+                  can delete this project.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <Alert className="border-red-200 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    Deleting <strong>{project.name}</strong>
+                    {project.key ? (
+                      <>
+                        {" "}
+                        (<code>{project.key}</code>)
+                      </>
+                    ) : null}{" "}
+                    also removes its global attributes and approval history.
+                  </AlertDescription>
+                </Alert>
 
-            <div className="grid gap-2">
-              <Label htmlFor="confirm-project-name">
-                Type <strong>{project.name}</strong> to confirm
-              </Label>
-              <Input
-                id="confirm-project-name"
-                value={confirmName}
-                onChange={(e) => setConfirmName(e.target.value)}
-                placeholder={project.name}
-                autoComplete="off"
-                autoFocus
-              />
-            </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="confirm-project-name">
+                    Type <strong>{project.name}</strong> to confirm
+                  </Label>
+                  <Input
+                    id="confirm-project-name"
+                    value={confirmName}
+                    onChange={(e) => setConfirmName(e.target.value)}
+                    placeholder={project.name}
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>
@@ -108,15 +122,17 @@ export function DeleteProjectModal({
               onClick={() => onOpenChange(false)}
               disabled={isDeleting}
             >
-              Cancel
+              {hasFlags ? "Close" : "Cancel"}
             </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={!matches || isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete Project"}
-            </Button>
+            {!hasFlags && (
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={!matches || isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete Project"}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
