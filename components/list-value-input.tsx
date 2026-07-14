@@ -64,10 +64,14 @@ export function ListValueInput({ values, onValuesChange, placeholder = "Add valu
           {values.map((value, index) => (
             <Badge key={index} variant="secondary" className="gap-1">
               {String(value)}
-              <X
-                className="w-3 h-3 cursor-pointer hover:text-destructive"
+              <button
+                type="button"
+                aria-label={`Remove ${String(value)}`}
+                className="cursor-pointer hover:text-destructive"
                 onClick={() => removeValue(index)}
-              />
+              >
+                <X className="w-3 h-3" />
+              </button>
             </Badge>
           ))}
         </div>
