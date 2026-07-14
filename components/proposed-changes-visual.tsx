@@ -1,8 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ArrowRight, Plus, Minus, Pencil, Power, Sliders, ListChecks, Target } from "lucide-react"
+import { ArrowRight, Plus, Minus, Pencil, Power, ListChecks, Target } from "lucide-react"
 import { RuleBuilder } from "./rule-builder"
 import type { GlobalAttribute, Rule, TrafficSplit } from "../types"
 
@@ -120,29 +119,6 @@ function SectionHeader({ icon: Icon, title, right }: { icon: any; title: string;
   )
 }
 
-function SplitBars({ splits, tone }: { splits: TrafficSplit[]; tone: "old" | "new" | "neutral" }) {
-  const barColor =
-    tone === "old" ? "[&>div]:bg-red-400" : tone === "new" ? "[&>div]:bg-green-500" : "[&>div]:bg-blue-500"
-  return (
-    <div className="space-y-1.5">
-      {splits.map((split, idx) => (
-        <div key={idx} className="flex items-center gap-2 text-xs">
-          <div className="w-10 text-right font-mono text-gray-600">{split.percentage}%</div>
-          <Progress value={split.percentage} className={`flex-1 h-2 ${barColor}`} />
-          <Badge variant="outline" className="text-[10px] font-mono max-w-[160px] truncate">
-            {display(split.value)}
-          </Badge>
-          {split.label && (
-            <Badge variant="secondary" className="text-[10px]">
-              {split.label}
-            </Badge>
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 type RuleDiffStatus = "added" | "removed" | "modified" | "unchanged"
 
 const RULE_STATUS_META: Record<
@@ -242,34 +218,12 @@ export function VisualChangeView({ oldValue, newValue, attributes, action }: Vis
     )
   }
 
-  // --- Case 2: traffic split array change (e.g. update_traffic_split) ---
-  if (oldN.kind === "trafficSplits" || newN.kind === "trafficSplits") {
-    return (
-      <div className="rounded-lg border bg-white p-4 space-y-3">
-        <SectionHeader icon={Sliders} title="Traffic distribution" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">Before</div>
-            {oldN.trafficSplits && oldN.trafficSplits.length > 0 ? (
-              <SplitBars splits={oldN.trafficSplits} tone="old" />
-            ) : (
-              <div className="text-xs text-muted-foreground italic">none</div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <div className="text-xs font-medium text-muted-foreground">After</div>
-            {newN.trafficSplits && newN.trafficSplits.length > 0 ? (
-              <SplitBars splits={newN.trafficSplits} tone="new" />
-            ) : (
-              <div className="text-xs text-muted-foreground italic">none</div>
-            )}
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // NOTE: Traffic-split visualization is intentionally hidden for now — the
+  // traffic-split feature isn't exposed in the UI yet. Such changes fall
+  // through to the "no structured changes" state (reviewers use the Diff
+  // view). Re-enable the traffic sections here once the feature ships.
 
-  // --- Case 3: full config object diff ---
+  // --- Case 2: full config object diff ---
   const statusChanged = oldN.enabled !== newN.enabled && oldN.enabled !== undefined
   const showStatus = newN.enabled !== undefined || oldN.enabled !== undefined
   const defaultChanged =
@@ -287,11 +241,7 @@ export function VisualChangeView({ oldValue, newValue, attributes, action }: Vis
   )
   const hasRules = ruleItems.length > 0
 
-  const trafficChanged =
-    JSON.stringify(oldN.trafficSplits || []) !== JSON.stringify(newN.trafficSplits || [])
-  const showTraffic = (oldN.trafficSplits && oldN.trafficSplits.length > 0) || (newN.trafficSplits && newN.trafficSplits.length > 0)
-
-  if (!showStatus && !showDefault && !hasRules && !showTraffic) {
+  if (!showStatus && !showDefault && !hasRules) {
     return (
       <div className="rounded-lg border bg-white p-6 text-sm text-muted-foreground text-center">
         No structured changes to visualize. Switch to the <span className="font-medium">Diff</span> view for raw details.
@@ -342,40 +292,6 @@ export function VisualChangeView({ oldValue, newValue, attributes, action }: Vis
             {ruleItems.map((item, idx) => (
               <RuleDiffCard key={item.rule.id || idx} item={item} attributes={attributes} />
             ))}
-          </div>
-        </div>
-      )}
-
-      {showTraffic && (
-        <div className="rounded-lg border bg-white p-4 space-y-3">
-          <SectionHeader
-            icon={Sliders}
-            title="Traffic distribution"
-            right={
-              trafficChanged ? (
-                <Badge variant="outline" className="text-[10px] bg-amber-100 text-amber-800 border-amber-200">
-                  changed
-                </Badge>
-              ) : undefined
-            }
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground">Before</div>
-              {oldN.trafficSplits && oldN.trafficSplits.length > 0 ? (
-                <SplitBars splits={oldN.trafficSplits} tone="old" />
-              ) : (
-                <div className="text-xs text-muted-foreground italic">none</div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground">After</div>
-              {newN.trafficSplits && newN.trafficSplits.length > 0 ? (
-                <SplitBars splits={newN.trafficSplits} tone="new" />
-              ) : (
-                <div className="text-xs text-muted-foreground italic">none</div>
-              )}
-            </div>
           </div>
         </div>
       )}
