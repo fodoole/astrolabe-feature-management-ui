@@ -4,15 +4,18 @@ import { useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Columns2, FileText, GitCompare } from "lucide-react"
+import { Columns2, FileText, GitCompare, LayoutGrid } from "lucide-react"
+import { VisualChangeView } from "./proposed-changes-visual"
+import type { GlobalAttribute } from "../types"
 
-type ViewMode = "diff" | "split" | "raw"
+type ViewMode = "visual" | "diff" | "split" | "raw"
 
 interface ProposedChangesDiffProps {
   oldValue: any
   newValue: any
   environment?: string
   action?: string
+  attributes?: GlobalAttribute[]
 }
 
 interface DiffLine {
@@ -259,8 +262,9 @@ export function ProposedChangesDiff({
   newValue,
   environment,
   action,
+  attributes = [],
 }: ProposedChangesDiffProps) {
-  const [view, setView] = useState<ViewMode>("diff")
+  const [view, setView] = useState<ViewMode>("visual")
 
   const envs = useMemo(
     () => getEnvList(oldValue, newValue, environment),
@@ -271,7 +275,7 @@ export function ProposedChangesDiff({
     return envs.map((env) => {
       const oldEnv = getEnvConfig(oldValue, env)
       const newEnv = getEnvConfig(newValue, env)
-      return { env, ...computeDiff(oldEnv, newEnv) }
+      return { env, oldEnv, newEnv, ...computeDiff(oldEnv, newEnv) }
     })
   }, [envs, oldValue, newValue])
 
@@ -303,6 +307,7 @@ export function ProposedChangesDiff({
           )}
         </div>
         <div className="flex items-center gap-1">
+          {viewButton("visual", "Visual", LayoutGrid)}
           {viewButton("diff", "Diff", GitCompare)}
           {viewButton("split", "Side by side", Columns2)}
           {viewButton("raw", "Raw", FileText)}
@@ -334,7 +339,7 @@ export function ProposedChangesDiff({
           </TabsList>
         )}
 
-        {envData.map(({ env, oldStr, newStr, lines, stats }) => (
+        {envData.map(({ env, oldEnv, newEnv, oldStr, newStr, lines, stats }) => (
           <TabsContent key={env} value={env} className="space-y-3">
             <div className="flex items-center gap-2 text-xs flex-wrap">
               <Badge
@@ -357,6 +362,14 @@ export function ProposedChangesDiff({
               )}
             </div>
 
+            {view === "visual" && (
+              <VisualChangeView
+                oldValue={oldEnv}
+                newValue={newEnv}
+                attributes={attributes}
+                action={action}
+              />
+            )}
             {view === "diff" && <UnifiedDiff lines={lines} />}
             {view === "split" && <SplitDiff lines={lines} />}
             {view === "raw" && <RawView oldStr={oldStr} newStr={newStr} />}
