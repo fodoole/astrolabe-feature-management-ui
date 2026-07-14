@@ -18,6 +18,7 @@ import { Play, RefreshCw, User, Code, AlertTriangle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { evaluateLiveFlag, evaluateFlagWithChanges, type FlagEvaluationResult } from "../../lib/api-services"
 import type { FeatureFlag, GlobalAttribute, Environment, EnvironmentConfig } from "../../types"
+import { RuleBuilder } from "../rule-builder"
 
 interface FlagPreviewModalProps {
   open: boolean
@@ -73,6 +74,12 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
   }
   
   const relevantAttributes = getRelevantAttributes()
+
+  // Resolve the matched rule name (from the backend) to its full config so we
+  // can render its conditions with the shared read-only rule renderer.
+  const matchedRuleConfig = evaluationResult?.matchedRule
+    ? environmentConfig?.rules?.find(rule => rule.name === evaluationResult.matchedRule)
+    : undefined
   
   const handleAttributeChange = (attributeId: string, value: string) => {
     const attribute = attributes.find(attr => attr.id === attributeId)
@@ -286,23 +293,18 @@ export function FlagPreviewModal({ open, onOpenChange, flag, environment, attrib
                     </div>
                   </div>
 
-                  {evaluationResult.matchedRule && (
+                  {evaluationResult.matchedRule ? (
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground">Matched Rule: {evaluationResult.matchedRule.name}</Label>
-                      <div className="space-y-1">
-                        {evaluationResult.matchedRule.conditions.map((condition: any, index: number) => (
-                          <div key={index} className="flex items-center gap-2 text-sm p-2 bg-muted rounded">
-                            <Badge variant={condition.matches ? "default" : "secondary"} className="text-xs">
-                              {condition.matches ? "✓" : "✗"}
-                            </Badge>
-                            <span>{condition.attribute}</span>
-                            <span className="text-muted-foreground">{condition.operator}</span>
-                            <span className="font-mono">{JSON.stringify(condition.expectedValue)}</span>
-                            <span className="text-muted-foreground">→</span>
-                            <span className="font-mono">{JSON.stringify(condition.actualValue)}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <Label className="text-sm text-muted-foreground">Matched Rule: {evaluationResult.matchedRule}</Label>
+                      {matchedRuleConfig ? (
+                        <div className="p-3 bg-muted rounded">
+                          <RuleBuilder rule={matchedRuleConfig} attributes={attributes} readonly />
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No targeting rule matched — the default value was returned.
                     </div>
                   )}
 

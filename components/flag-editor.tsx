@@ -1053,48 +1053,55 @@ export function FlagEditor({
                                     <div className="mb-3">
                                       <div className="text-xs font-medium text-muted-foreground mb-2">CONDITIONS ({rule.logicalOperator || 'AND'})</div>
                                       <div className="space-y-1">
-                                        {rule.conditions.map((condition: any, condIndex: number) => (
+                                        {rule.conditions.map((condition: any, condIndex: number) => {
+                                          const attribute = attributes.find((attr) => attr.id === condition.attributeId)
+                                          const attributeLabel = attribute?.name || condition.attributeId || 'Unknown attribute'
+                                          const listValues = Array.isArray(condition.listValues)
+                                            ? condition.listValues
+                                            : Array.isArray(condition.value)
+                                              ? condition.value
+                                              : undefined
+                                          return (
                                           <div key={condIndex} className="text-xs bg-muted/50 px-3 py-2 rounded-md border">
                                             <div className="flex items-center gap-2 flex-wrap">
                                               <Badge variant="outline" className="text-xs font-medium">
-                                                {condition.attribute}
+                                                {attributeLabel}
                                               </Badge>
                                               <span className="text-muted-foreground font-medium">
-                                                {condition.operator === 'in' ? 'is one of' : 
+                                                {condition.operator === 'in' ? 'is one of' :
                                                  condition.operator === 'not_in' ? 'is not one of' :
                                                  condition.operator === 'equals' ? '=' :
                                                  condition.operator === 'not_equals' ? '≠' :
                                                  condition.operator === 'contains' ? 'contains' :
-                                                 condition.operator === 'not_contains' ? 'does not contain' :
-                                                 condition.operator === 'starts_with' ? 'starts with' :
-                                                 condition.operator === 'ends_with' ? 'ends with' :
                                                  condition.operator === 'greater_than' ? '>' :
                                                  condition.operator === 'less_than' ? '<' :
-                                                 condition.operator === 'greater_than_or_equal' ? '≥' :
-                                                 condition.operator === 'less_than_or_equal' ? '≤' :
+                                                 condition.operator === 'modulus_equals' ? 'modulus equals' :
                                                  condition.operator}
                                               </span>
                                               {condition.operator === 'in' || condition.operator === 'not_in' ? (
                                                 <div className="flex gap-1 flex-wrap">
-                                                  {Array.isArray(condition.value) ? 
-                                                    condition.value.map((val: any, valIndex: number) => (
+                                                  {listValues && listValues.length > 0 ?
+                                                    listValues.map((val: any, valIndex: number) => (
                                                       <Badge key={valIndex} variant="secondary" className="text-xs font-mono">
-                                                        {val}
+                                                        {String(val)}
                                                       </Badge>
-                                                    )) : 
-                                                    <Badge variant="secondary" className="text-xs font-mono">
-                                                      {condition.value}
-                                                    </Badge>
+                                                    )) :
+                                                    <span className="text-muted-foreground italic">no values</span>
                                                   }
                                                 </div>
+                                              ) : condition.operator === 'modulus_equals' ? (
+                                                <Badge variant="secondary" className="text-xs font-mono">
+                                                  % {String(condition.modulusValue)} = {String(condition.value)}
+                                                </Badge>
                                               ) : (
                                                 <Badge variant="secondary" className="text-xs font-mono">
-                                                  {Array.isArray(condition.value) ? condition.value.join(', ') : condition.value}
+                                                  {Array.isArray(condition.value) ? condition.value.join(', ') : String(condition.value)}
                                                 </Badge>
                                               )}
                                             </div>
                                           </div>
-                                        ))}
+                                          )
+                                        })}
                                       </div>
                                     </div>
                                   )}
