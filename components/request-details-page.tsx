@@ -11,8 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
 import { ProposedChangesDiff } from "./proposed-changes-diff"
-import type { ApprovalRequest } from "../types"
-import { approveRequest, rejectRequest, getApprovalById } from "../lib/api-services"
+import type { ApprovalRequest, GlobalAttribute } from "../types"
+import { approveRequest, rejectRequest, getApprovalById, fetchGlobalAttributes } from "../lib/api-services"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
@@ -35,6 +35,7 @@ const statusColors = {
 export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   const router = useRouter()
   const [approval, setApproval] = useState<ApprovalRequest | null>(null)
+  const [attributes, setAttributes] = useState<GlobalAttribute[]>([])
   const [comment, setComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -56,6 +57,16 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
         // Load only the approval request - it contains all the necessary data
         const approvalData = await getApprovalById(requestId)
         setApproval(approvalData)
+
+        // Load global attributes so the visual change view can render rule
+        // conditions with human-readable attribute names. Best-effort: the
+        // review still works (falling back to attribute IDs) if this fails.
+        try {
+          const attrs = await fetchGlobalAttributes()
+          setAttributes(attrs)
+        } catch {
+          // ignore — attribute names are a nice-to-have for the visual view
+        }
       } catch (err) {
         setError('Failed to load request details')
         handleApiError(err, 'Failed to load request details')
@@ -263,6 +274,7 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
             newValue={approval.changes?.newValue}
             environment={approval.changes?.environment}
             action={approval.changes?.action}
+            attributes={attributes}
           />
 
           {/* Review Section - Only show for pending requests */}
