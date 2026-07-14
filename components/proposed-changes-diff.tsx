@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Columns2, FileText, GitCompare, LayoutGrid } from "lucide-react"
 import { VisualChangeView } from "./proposed-changes-visual"
+import { stripDerivedAttributeMetadata } from "../lib/flag-config-transformer"
 import type { GlobalAttribute } from "../types"
 
 type ViewMode = "visual" | "diff" | "split" | "raw"
@@ -266,18 +267,22 @@ export function ProposedChangesDiff({
 }: ProposedChangesDiffProps) {
   const [view, setView] = useState<ViewMode>("visual")
 
+  // Drop backend-derived attribute metadata so it never shows as a phantom diff.
+  const cleanOld = useMemo(() => stripDerivedAttributeMetadata(oldValue), [oldValue])
+  const cleanNew = useMemo(() => stripDerivedAttributeMetadata(newValue), [newValue])
+
   const envs = useMemo(
-    () => getEnvList(oldValue, newValue, environment),
-    [oldValue, newValue, environment],
+    () => getEnvList(cleanOld, cleanNew, environment),
+    [cleanOld, cleanNew, environment],
   )
 
   const envData = useMemo(() => {
     return envs.map((env) => {
-      const oldEnv = getEnvConfig(oldValue, env)
-      const newEnv = getEnvConfig(newValue, env)
+      const oldEnv = getEnvConfig(cleanOld, env)
+      const newEnv = getEnvConfig(cleanNew, env)
       return { env, oldEnv, newEnv, ...computeDiff(oldEnv, newEnv) }
     })
-  }, [envs, oldValue, newValue])
+  }, [envs, cleanOld, cleanNew])
 
   const [activeEnv, setActiveEnv] = useState(envs[0])
 

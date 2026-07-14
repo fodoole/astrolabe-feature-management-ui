@@ -255,40 +255,6 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
                   </div>
                 </div>
 
-                <div className="bg-muted rounded p-3">
-                  <div className="text-sm font-medium mb-2">Requested Changes:</div>
-                  <div className="text-xs space-y-1">
-                    {approval.changes ? (
-                      <>
-                        <div>
-                          <span className="font-medium">Environment:</span> {approval.changes.environment || 'N/A'}
-                        </div>
-                        <div>
-                          <span className="font-medium">Action:</span> {approval.changes.action || 'N/A'}
-                        </div>
-                        {approval.changes.oldValue && (
-                          <div>
-                            <span className="font-medium">Before:</span>
-                            <div className="bg-background p-2 rounded mt-1">
-                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.oldValue, null, 2)}</pre>
-                            </div>
-                          </div>
-                        )}
-                        {approval.changes.newValue && (
-                          <div>
-                            <span className="font-medium">After:</span>
-                            <div className="bg-background p-2 rounded mt-1">
-                              <pre className="text-xs overflow-auto">{JSON.stringify(approval.changes.newValue, null, 2)}</pre>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-muted-foreground">No change details available</div>
-                    )}
-                  </div>
-                </div>
-
                 {approval.status !== "pending" && approval.reviewedBy && (
                   <div className="border-t pt-4">
                     <div className="flex items-start gap-3">
