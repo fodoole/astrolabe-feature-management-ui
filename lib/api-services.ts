@@ -704,8 +704,20 @@ export async function updateTeamMembers(
 // Flag evaluation interfaces
 export interface FlagEvaluationResult {
   value: any
+  // Name of the rule that matched, if any (backend returns `matched_rule`)
   matchedRule?: string
+  reason?: string
   timestamp: string
+}
+
+// Backend responds with snake_case `matched_rule`; normalize to our shape.
+function normalizeEvaluationResult(raw: any): FlagEvaluationResult {
+  return {
+    value: raw?.value,
+    matchedRule: raw?.matchedRule ?? raw?.matched_rule ?? undefined,
+    reason: raw?.reason,
+    timestamp: raw?.timestamp,
+  }
 }
 
 // Evaluate a live flag using the existing flag endpoint
@@ -715,7 +727,7 @@ export async function evaluateLiveFlag(
   environment: string,
   attributes: Record<string, any>
 ): Promise<FlagEvaluationResult> {
-  const response = await apiRequest<FlagEvaluationResult>(
+  const response = await apiRequest<any>(
     `/feature-flags/${projectKey}/${flagKey}/evaluate/`,
     {
       method: 'POST',
@@ -725,7 +737,7 @@ export async function evaluateLiveFlag(
       })
     }
   )
-  return response
+  return normalizeEvaluationResult(response)
 }
 
 // Evaluate flag with unsaved changes using the project-level endpoint
@@ -735,7 +747,7 @@ export async function evaluateFlagWithChanges(
   environment: string,
   attributes: Record<string, any>
 ): Promise<FlagEvaluationResult> {
-  const response = await apiRequest<FlagEvaluationResult>(
+  const response = await apiRequest<any>(
     `/feature-flags/${projectKey}/evaluate/`,
     {
       method: 'POST',
@@ -746,5 +758,5 @@ export async function evaluateFlagWithChanges(
       })
     }
   )
-  return response
+  return normalizeEvaluationResult(response)
 }

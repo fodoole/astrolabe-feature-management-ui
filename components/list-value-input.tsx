@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Plus, X } from 'lucide-react'
 
+type ListValue = string | number | boolean
+
 interface ListValueInputProps {
-  values: string[]
-  onValuesChange: (values: string[]) => void
+  values: ListValue[]
+  onValuesChange: (values: ListValue[]) => void
   placeholder?: string
   suggestions?: string[]
 }
@@ -18,14 +20,19 @@ export function ListValueInput({ values, onValuesChange, placeholder = "Add valu
 
   const addValue = () => {
     const trimmedValue = newValue.trim()
-    if (trimmedValue && !values.includes(trimmedValue)) {
+    // Compare with String() so that already-added numeric/boolean values
+    // (which are stored coerced) are correctly detected as duplicates.
+    if (trimmedValue && !values.some(v => String(v) === trimmedValue)) {
       onValuesChange([...values, trimmedValue])
       setNewValue("")
     }
   }
 
-  const removeValue = (valueToRemove: string) => {
-    onValuesChange(values.filter(v => v !== valueToRemove))
+  // Remove by index rather than by value: values can be coerced to
+  // numbers/booleans upstream and may contain duplicates, so value-based
+  // filtering is unreliable (and NaN never equals itself).
+  const removeValue = (indexToRemove: number) => {
+    onValuesChange(values.filter((_, i) => i !== indexToRemove))
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -35,7 +42,7 @@ export function ListValueInput({ values, onValuesChange, placeholder = "Add valu
     }
   }
 
-  const remainingSuggestions = (suggestions || []).filter(s => !values.includes(s))
+  const remainingSuggestions = (suggestions || []).filter(s => !values.some(v => String(v) === s))
 
   return (
     <div className="space-y-2">
@@ -51,15 +58,15 @@ export function ListValueInput({ values, onValuesChange, placeholder = "Add valu
           <Plus className="w-4 h-4" />
         </Button>
       </div>
-      
+
       {values.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {values.map((value) => (
-            <Badge key={value} variant="secondary" className="gap-1">
-              {value}
+          {values.map((value, index) => (
+            <Badge key={index} variant="secondary" className="gap-1">
+              {String(value)}
               <X
                 className="w-3 h-3 cursor-pointer hover:text-destructive"
-                onClick={() => removeValue(value)}
+                onClick={() => removeValue(index)}
               />
             </Badge>
           ))}

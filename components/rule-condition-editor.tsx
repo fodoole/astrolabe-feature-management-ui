@@ -50,27 +50,27 @@ export function RuleConditionEditor({
     return operator === "in" || operator === "not_in"
   }
 
-  const handleListValuesChange = (values: string[]) => {
+  const handleListValuesChange = (values: (string | number | boolean)[]) => {
     if (!attribute) {
       onUpdate("listValues", values)
       return
     }
 
     let convertedValues: any[] = values
-    
+
     try {
       if (attribute.type === "number") {
         convertedValues = values.map(v => {
-          const num = Number.parseFloat(v)
+          const num = Number.parseFloat(String(v))
           return isNaN(num) ? v : num
         })
       } else if (attribute.type === "boolean") {
-        convertedValues = values.map(v => v.toLowerCase() === "true")
+        convertedValues = values.map(v => String(v).toLowerCase() === "true")
       }
     } catch (error) {
       convertedValues = values
     }
-    
+
     onUpdate("listValues", convertedValues)
   }
 
