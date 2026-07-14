@@ -11,8 +11,16 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2, ArrowRightLeft } from 'lucide-react'
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2, ArrowRightLeft, Save } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import type {
   Project,
   FeatureFlag,
@@ -75,12 +83,27 @@ export function FlagEditor({
   const [showMoveFlagModal, setShowMoveFlagModal] = useState(false)
   const [isDeletingFlag, setIsDeletingFlag] = useState(false)
   const [isMovingFlag, setIsMovingFlag] = useState(false)
+  // Holds a navigation action (switch flag / switch environment) that was blocked
+  // because there are unsaved changes. When set, the confirm dialog is shown; the
+  // action runs only if the user chooses to discard.
+  const [pendingNavAction, setPendingNavAction] = useState<null | (() => void)>(null)
   const access = useAccess()
 
   useEffect(() => {
     setHasUnsavedChanges(false)
     setLocalFlags(flags)
   }, [selectedFlag, flags])
+
+  // Warn before the browser tab is closed / reloaded while there are unsaved edits.
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   useEffect(() => {
     const fetchFlagDefinition = async () => {
@@ -518,6 +541,26 @@ export function FlagEditor({
     setHasUnsavedChanges(false)
   }
 
+  // Run a navigation action, but if there are unsaved changes first ask the user
+  // to confirm (they'd otherwise be silently discarded).
+  const runGuardedNavigation = (action: () => void) => {
+    if (hasUnsavedChanges) {
+      // Store the action itself; the extra arrow avoids React treating it as an updater.
+      setPendingNavAction(() => action)
+    } else {
+      action()
+    }
+  }
+
+  const confirmDiscardAndNavigate = () => {
+    const action = pendingNavAction
+    handleDiscardChanges()
+    setPendingNavAction(null)
+    action?.()
+  }
+
+  const cancelPendingNavigation = () => setPendingNavAction(null)
+
   const handleSaveChanges = async () => {
     // Only require approvals.request permission explicitly when production changes are proposed
     if (selectedEnvironment === 'production' && !requirePermission(access, 'approvals', 'request', { label: 'approval requests' })) return
@@ -736,29 +779,69 @@ export function FlagEditor({
         </Alert>
       )}
 
-      {hasUnsavedChanges && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            You have unsaved changes. Click Save to persist your changes.
-            <div className="flex gap-2 mt-2">
-              <Button
-                onClick={handleSaveChanges}
-                disabled={!canEditFlag || isSaving}
-                size="sm"
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
+      {/*
+        Persistent save bar. It is shown for any selected flag — not only when there
+        are pending edits — so the "editing is not the same as saving" model is always
+        visible. It sticks to the top of the scroll area so it never scrolls out of
+        reach while editing rules or the default value further down the page.
+      */}
+      {currentFlag && (
+        <div className="sticky top-0 z-30 -mx-6 px-6 pt-2 pb-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b">
+          <div
+            className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 transition-colors ${hasUnsavedChanges
+              ? "border-amber-300 bg-amber-50"
+              : "border-border bg-muted/40"
+              }`}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              {hasUnsavedChanges ? (
+                <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+                </span>
+              ) : (
+                <CheckCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+              )}
+              <div className="min-w-0">
+                <div className={`text-sm font-medium ${hasUnsavedChanges ? "text-amber-900" : "text-muted-foreground"}`}>
+                  {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {hasUnsavedChanges
+                    ? `Edits to “${currentFlag.name}” are not saved yet — click Save to submit them.`
+                    : `Editing “${currentFlag.name}” — changes are saved only when you click Save.`}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 onClick={handleDiscardChanges}
                 variant="outline"
                 size="sm"
+                disabled={!hasUnsavedChanges || isSaving}
               >
                 Discard
               </Button>
+              <Button
+                onClick={handleSaveChanges}
+                disabled={!hasUnsavedChanges || !canEditFlag || isSaving}
+                size="sm"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
             </div>
-          </AlertDescription>
-        </Alert>
+          </div>
+        </div>
       )}
 
       {isAstrolabe && (
@@ -782,10 +865,22 @@ export function FlagEditor({
                 key={flag.id}
                 className={`p-3 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${selectedFlag === flag.id ? "bg-muted border-primary" : ""
                   }`}
-                onClick={() => onSelectFlag(flag.id)}
+                onClick={() => {
+                  if (flag.id === selectedFlag) return
+                  runGuardedNavigation(() => onSelectFlag(flag.id))
+                }}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <div className="font-medium text-sm">{flag.name}</div>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {selectedFlag === flag.id && hasUnsavedChanges && (
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full bg-amber-500"
+                        title="Unsaved changes"
+                        aria-label="Unsaved changes"
+                      />
+                    )}
+                    <div className="font-medium text-sm truncate">{flag.name}</div>
+                  </div>
                   <Badge variant="outline" className="text-xs">
                     {flag.dataType}
                   </Badge>
@@ -838,7 +933,7 @@ export function FlagEditor({
 
               {/* Flag Content - Hidden while loading */}
               {!isLoadingFlagDefinition && (
-                <Tabs value={selectedEnvironment} onValueChange={(value) => setSelectedEnvironment(value as Environment)}>
+                <Tabs value={selectedEnvironment} onValueChange={(value) => runGuardedNavigation(() => setSelectedEnvironment(value as Environment))}>
                   <div className="flex items-center justify-between mb-4">
                     <TabsList className="grid w-full grid-cols-3">
                       <TabsTrigger value="development">Development</TabsTrigger>
@@ -983,7 +1078,7 @@ export function FlagEditor({
 
                                   <div className="flex gap-2">
                                     <Button size="sm" onClick={isAstrolabe ? undefined : handleSaveDefaultValue} disabled={!canEditFlag}>
-                                      Save
+                                      Apply
                                     </Button>
                                     <Button size="sm" variant="outline" onClick={handleCancelEditingDefaultValue}>
                                       Cancel
@@ -991,10 +1086,13 @@ export function FlagEditor({
                                   </div>
 
                                   <p className="text-xs text-muted-foreground">
-                                    {currentFlag?.dataType === 'boolean' && "Select true or false"}
-                                    {currentFlag?.dataType === 'number' && "Enter a valid number"}
-                                    {currentFlag?.dataType === 'string' && "Enter any text value"}
-                                    {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.)"}
+                                    {currentFlag?.dataType === 'boolean' && "Select true or false. "}
+                                    {currentFlag?.dataType === 'number' && "Enter a valid number. "}
+                                    {currentFlag?.dataType === 'string' && "Enter any text value. "}
+                                    {currentFlag?.dataType === 'json' && "Enter valid JSON (objects, arrays, etc.). "}
+                                    <span className="text-amber-700">
+                                      Applying updates this field locally — use <strong>Save Changes</strong> at the top to submit it.
+                                    </span>
                                   </p>
                                 </div>
                               ) : (
@@ -1148,6 +1246,30 @@ export function FlagEditor({
           )}
         </div>
       </div>
+
+      {/* Unsaved-changes navigation guard */}
+      <Dialog open={pendingNavAction !== null} onOpenChange={(open) => { if (!open) cancelPendingNavigation() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Discard unsaved changes?</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes that haven't been submitted yet. If you continue,
+              these edits will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelPendingNavigation}>
+              Keep editing
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDiscardAndNavigate}
+            >
+              Discard changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modals */}
       {selectedProject && (
