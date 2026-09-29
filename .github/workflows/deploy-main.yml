@@ -49,7 +49,7 @@ jobs:
           tags: gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
           # NEXT_PUBLIC_* values are inlined at build time
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.ASTROLABE_API_URL }}
+            NEXT_PUBLIC_API_URL=https://astrolabe-feature-management-711061180499.europe-west1.run.app
           cache-from: type=gha,scope=main
           cache-to: type=gha,mode=max,scope=main
 
