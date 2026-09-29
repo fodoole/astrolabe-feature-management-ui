@@ -4,10 +4,6 @@ name: Deploy to Production
 # Mirrors qeen-web-ui's deploy-main.yml: same prod project, credentials, registry and region.
 on:
   workflow_dispatch:
-  # TEMPORARY: GitHub only shows "Run workflow" once this file is on main, so while testing from
-  # staging a push to staging triggers the deploy. Remove this before merging to main.
-  push:
-    branches: [staging]
 
 concurrency:
   group: deploy-main
