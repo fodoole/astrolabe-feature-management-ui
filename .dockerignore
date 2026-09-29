@@ -1,0 +1,15 @@
+.git
+.github
+.next
+node_modules
+npm-debug.log*
+.pnpm-debug.log*
+.env*
+!env.example
+.vercel
+Dockerfile
+.dockerignore
+README.md
+docs
+*.tsbuildinfo
+package-lock.json
