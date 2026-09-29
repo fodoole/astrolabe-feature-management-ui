@@ -1,15 +1,20 @@
 # syntax=docker/dockerfile:1
 
+# Pin pnpm: unpinned corepack pulls the latest major, which fails on ignored build scripts
+ARG PNPM_VERSION=10.15.0
+
 # ---- deps: install node_modules from the pnpm lockfile ----
 FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat && corepack enable
+ARG PNPM_VERSION
+RUN apk add --no-cache libc6-compat && corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # ---- builder: produce the standalone Next.js server ----
 FROM node:22-alpine AS builder
-RUN corepack enable
+ARG PNPM_VERSION
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
