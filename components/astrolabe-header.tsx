@@ -1,6 +1,7 @@
 "use client"
 
-import { Navigation, LogOut, User } from "lucide-react"
+import Image from "next/image"
+import { LogOut, User } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -23,8 +24,8 @@ export function AstrolabeHeader() {
   return (
     <div className="flex items-center justify-between p-4">
       <div className="flex items-center gap-3">
-        <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
-          <Navigation className="w-5 h-5 text-primary-foreground" />
+        <div className="relative w-8 h-8 rounded-lg overflow-hidden">
+          <Image src="/astrolabe-icon.png" alt="Astrolabe" fill className="object-cover" />
         </div>
         <div>
           <h1 className="text-xl font-bold">Astrolabe</h1>
