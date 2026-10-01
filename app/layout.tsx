@@ -15,6 +15,22 @@ export const metadata: Metadata = {
   title: 'Astrolabe - Feature Flag Management',
   description: 'Feature flag management system with team collaboration',
   generator: 'v0.app',
+  icons: {
+    icon: '/astrolabe-icon.png',
+    shortcut: '/astrolabe-icon.png',
+    apple: '/astrolabe-icon.png',
+  },
+  openGraph: {
+    title: 'Astrolabe - Feature Flag Management',
+    description: 'Feature flag management system with team collaboration',
+    images: ['/astrolabe-preview.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Astrolabe - Feature Flag Management',
+    description: 'Feature flag management system with team collaboration',
+    images: ['/astrolabe-preview.png'],
+  },
 }
 
 export default function RootLayout({
