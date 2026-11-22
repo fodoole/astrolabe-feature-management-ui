@@ -135,6 +135,12 @@ export async function authenticatedApiRequest<T>(
       },
     })
 
+    if (response.status === 401) {
+      // Backend rejected our appJwt — the NextAuth session is stale, force re-login
+      const { signOut } = await import('next-auth/react')
+      signOut({ callbackUrl: '/auth/signin' })
+    }
+
     if (!response.ok) {
       const errorText = await response.text()
       let detailMessage: string | undefined
