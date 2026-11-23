@@ -151,7 +151,7 @@ export interface ApprovalRequest {
   }
 }
 
-export type ApprovalStatus = "pending" | "approved" | "rejected"
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "cancelled"
 
 export interface Role {
   id: string

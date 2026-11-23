@@ -591,6 +591,32 @@ export async function rejectRequest(requestId: string, reviewerId: string, comme
   }
 }
 
+// Requester withdraws their own pending request (e.g. to fix a mistake and resubmit)
+export async function cancelRequest(requestId: string, comment?: string): Promise<ApprovalRequest> {
+  const response = await authenticatedApiRequest<ApprovalRequestDTO>(`/approvals/${requestId}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify({ comments: comment })
+  })
+
+  return {
+    id: response.id,
+    flagId: response.entityType === 'feature_flag' ? response.entityId : undefined,
+    projectId: response.projectId,
+    requestedBy: response.requestedBy,
+    requestedAt: new Date(response.requestedAt),
+    status: response.status as any,
+    reviewedBy: response.reviewedBy,
+    reviewedAt: response.reviewedAt ? new Date(response.reviewedAt) : undefined,
+    comments: response.comments,
+    changes: {
+      environment: 'production',
+      action: response.action,
+      newValue: response.afterSnapshot,
+      oldValue: response.beforeSnapshot
+    }
+  }
+}
+
 export async function createApprovalRequest(data: {
   entityType: string
   entityId: string
