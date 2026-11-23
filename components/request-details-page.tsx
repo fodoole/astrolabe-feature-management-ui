@@ -9,10 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2 } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, MessageSquare, Flag, User, Calendar, ArrowLeft, Share2, Ban } from 'lucide-react'
 import { ProposedChangesDiff } from "./proposed-changes-diff"
 import type { ApprovalRequest, GlobalAttribute } from "../types"
-import { approveRequest, rejectRequest, getApprovalById, fetchGlobalAttributes } from "../lib/api-services"
+import { approveRequest, rejectRequest, cancelRequest, getApprovalById, fetchGlobalAttributes } from "../lib/api-services"
 import { useUserId, getUserIdFromSession } from "../lib/session-utils"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 
@@ -24,12 +24,14 @@ const statusIcons = {
   pending: Clock,
   approved: CheckCircle,
   rejected: XCircle,
+  cancelled: Ban,
 }
 
 const statusColors = {
   pending: "default" as const,
   approved: "default" as const,
   rejected: "destructive" as const,
+  cancelled: "secondary" as const,
 }
 
 export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
@@ -131,6 +133,23 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
     }
   }
 
+  const handleCancel = async () => {
+    if (!approval) return
+    if (!window.confirm('Cancel this request? You can submit a corrected one afterwards.')) return
+
+    setIsSubmitting(true)
+    try {
+      const updatedApproval = await cancelRequest(approval.id, comment)
+      setApproval({ ...approval, ...updatedApproval, reviewedByUser: approval.requestedByUser })
+      setComment("")
+      showSuccessToast('Request cancelled')
+    } catch (error) {
+      handleApiError(error, 'Failed to cancel request')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href)
@@ -169,6 +188,7 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
   }
 
   const StatusIcon = statusIcons[approval.status]
+  const isRequester = !!currentUserId && approval.requestedBy === currentUserId
 
   return (
     <div className="container mx-auto py-8 space-y-6">
@@ -308,6 +328,17 @@ export function RequestDetailsPage({ requestId }: RequestDetailsPageProps) {
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-4">
+                {isRequester && (
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={isSubmitting}
+                    className="gap-2 mr-auto"
+                  >
+                    <Ban className="w-4 h-4" />
+                    Cancel request
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   onClick={handleReject}
