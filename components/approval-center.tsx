@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye, ExternalLink, User } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, MessageSquare, Flag, Eye, ExternalLink, User, Ban } from 'lucide-react'
 import type { ApprovalRequest, Project, User as UserType, FeatureFlag, ApprovalStatus } from "../types"
 import { approveRequest, rejectRequest } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
@@ -30,12 +30,14 @@ const statusIcons = {
   pending: Clock,
   approved: CheckCircle,
   rejected: XCircle,
+  cancelled: Ban,
 }
 
 const statusColors = {
   pending: "default" as const,
   approved: "default" as const,
   rejected: "destructive" as const,
+  cancelled: "secondary" as const,
 }
 
 export function ApprovalCenter({ approvals, projects, users, flags, currentUserId: propUserId, onApprovalsChange, selectedProject, selectedUser, onUserChange }: ApprovalCenterProps) {
@@ -152,7 +154,7 @@ export function ApprovalCenter({ approvals, projects, users, flags, currentUserI
           >
             All ({approvals.length})
           </Button>
-          {(["pending", "approved", "rejected"] as ApprovalStatus[]).map((status) => {
+          {(["pending", "approved", "rejected", "cancelled"] as ApprovalStatus[]).map((status) => {
             const Icon = statusIcons[status]
             const count = approvals.filter((a) => a.status === status).length
 
