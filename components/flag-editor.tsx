@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2, ArrowRightLeft, Save } from 'lucide-react'
+import { Plus, Flag, Settings, Eye, Code, Trash2, AlertCircle, Edit3, Clock, CheckCircle, XCircle, Loader2, ArrowRightLeft, Save, Lightbulb } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Dialog,
@@ -38,7 +38,7 @@ import { FlagPreviewModal } from "./modals/flag-preview-modal"
 import { EditRuleModal } from "./modals/edit-rule-modal"
 import { DeleteFlagModal } from "./modals/delete-flag-modal"
 import { MoveFlagModal } from "./modals/move-flag-modal"
-import { transformFlagToSDKFormat } from "../lib/flag-config-transformer"
+import { transformFlagToSDKFormat, findRedundantRuleIds } from "../lib/flag-config-transformer"
 import { createApprovalRequest, createFeatureFlag, getFlagDefinition, deleteFeatureFlag, moveFeatureFlag } from "../lib/api-services"
 import { handleApiError, showSuccessToast } from "../lib/toast-utils"
 import { toast } from 'sonner'
@@ -258,6 +258,7 @@ export function FlagEditor({
   // Debug current environment config
   console.log("Current environment config:", currentEnvironmentConfig)
   console.log("Current environment rules:", currentEnvironmentConfig?.rules)
+  const redundantRuleIds = currentEnvironmentConfig ? findRedundantRuleIds(currentEnvironmentConfig) : new Set<string>()
 
   const handleCreateFlag = async (flagData: {
     name: string
@@ -1130,14 +1131,27 @@ export function FlagEditor({
                         <CardContent>
                           {currentEnvironmentConfig?.rules && currentEnvironmentConfig.rules.length > 0 ? (
                             <div className="space-y-4">
+                              {redundantRuleIds.size > 0 && (
+                                <Alert className="border-amber-200 bg-amber-50">
+                                  <Lightbulb className="h-4 w-4 text-amber-600" />
+                                  <AlertDescription className="text-amber-800">
+                                    {redundantRuleIds.size === 1 ? 'This rule matches' : 'These rules match'} the default value and {redundantRuleIds.size === 1 ? 'has' : 'have'} no effect. Disable {redundantRuleIds.size === 1 ? 'it' : 'them'} instead.
+                                  </AlertDescription>
+                                </Alert>
+                              )}
                               {currentEnvironmentConfig.rules.map((rule: any, index: number) => (
-                                <div key={rule.id} className="border rounded-lg p-4">
+                                <div key={rule.id} className={`border rounded-lg p-4 ${redundantRuleIds.has(rule.id) ? 'border-amber-300 border-dashed' : ''}`}>
                                   <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
                                       <span className="font-medium">{rule.name}</span>
                                       <Badge variant={rule.enabled ? "default" : "secondary"}>
                                         {rule.enabled ? "Active" : "Inactive"}
                                       </Badge>
+                                      {redundantRuleIds.has(rule.id) && (
+                                        <Badge variant="outline" className="border-amber-300 text-amber-700">
+                                          No effect
+                                        </Badge>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Button variant="outline" size="sm" onClick={isAstrolabe ? undefined : () => handleEditRule(rule)} disabled={!canEditFlag}>
@@ -1310,6 +1324,13 @@ export function FlagEditor({
             flagDataType={currentFlag.dataType}
             onUpdateRule={handleUpdateRule}
             onDeleteRule={handleDeleteRule}
+            wouldHaveNoEffect={(updated) =>
+              !!currentEnvironmentConfig &&
+              findRedundantRuleIds({
+                defaultValue: currentEnvironmentConfig.defaultValue,
+                rules: currentEnvironmentConfig.rules.map((r: Rule) => (r.id === updated.id ? updated : r)),
+              }).has(updated.id)
+            }
           />
 
           {userIsAdmin && (
