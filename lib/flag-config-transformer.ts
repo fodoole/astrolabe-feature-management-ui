@@ -105,3 +105,37 @@ export function stripDerivedAttributeMetadata(snapshot: any): any {
   }
   return snapshot
 }
+
+// Values may arrive as strings ("true", "5") or typed, depending on whether
+// they came from the editor or the API — compare on a canonical form.
+function canonicalValue(value: unknown): string {
+  if (value === null || value === undefined) return 'null'
+  if (typeof value === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(value))
+    } catch {
+      return JSON.stringify(value)
+    }
+  }
+  return JSON.stringify(value)
+}
+
+// Rules are evaluated in order and the first enabled match wins; if none match,
+// the environment default is returned. An enabled rule that returns the default
+// is therefore a no-op unless a later enabled rule returns something else (in
+// which case it shields its users from that later rule). Returns the ids of the
+// rules that can be deleted without changing what any user gets.
+export function findRedundantRuleIds(env: Pick<EnvironmentConfig, 'defaultValue' | 'rules'>): Set<string> {
+  const redundant = new Set<string>()
+  const defaultKey = canonicalValue(env.defaultValue)
+  const rules = env.rules || []
+  for (let i = rules.length - 1; i >= 0; i--) {
+    const rule = rules[i]
+    if (!rule.enabled) continue
+    const returnsDefault =
+      rule.returnValue === undefined || rule.returnValue === null || canonicalValue(rule.returnValue) === defaultKey
+    if (!returnsDefault) break
+    redundant.add(rule.id)
+  }
+  return redundant
+}
