@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, X, Settings } from 'lucide-react'
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Plus, X, Settings, Lightbulb } from 'lucide-react'
 import type { Rule, GlobalAttribute, ComparisonOperator, LogicalOperator, RuleCondition } from "../../types"
 import { RuleConditionEditor } from "../rule-condition-editor"
 
@@ -27,6 +28,9 @@ interface EditRuleModalProps {
   flagDataType: string
   onUpdateRule: (ruleId: string, updates: Partial<Rule>) => void
   onDeleteRule: (ruleId: string) => void
+  // True when the rule, saved as given, would return the default value for
+  // everyone it matches (i.e. it changes nothing).
+  wouldHaveNoEffect?: (rule: Rule) => boolean
 }
 
 export function EditRuleModal({ 
@@ -36,13 +40,15 @@ export function EditRuleModal({
   attributes, 
   flagDataType, 
   onUpdateRule, 
-  onDeleteRule 
+  onDeleteRule,
+  wouldHaveNoEffect,
 }: EditRuleModalProps) {
   const [name, setName] = useState("")
   const [enabled, setEnabled] = useState(true)
   const [conditions, setConditions] = useState<RuleCondition[]>([])
   const [logicalOperator, setLogicalOperator] = useState<LogicalOperator>("AND")
   const [returnValue, setReturnValue] = useState("")
+  const [pendingUpdates, setPendingUpdates] = useState<Partial<Rule> | null>(null)
 
   useEffect(() => {
     if (rule) {
@@ -51,8 +57,9 @@ export function EditRuleModal({
       setConditions([...rule.conditions])
       setLogicalOperator(rule.logicalOperator)
       setReturnValue(JSON.stringify(rule.returnValue))
+      setPendingUpdates(null)
     }
-  }, [rule])
+  }, [rule, open])
 
   if (!rule) return null
 
@@ -79,14 +86,25 @@ export function EditRuleModal({
       return
     }
 
-    onUpdateRule(rule.id, {
+    const updates: Partial<Rule> = {
       name: name.trim(),
       enabled,
       conditions,
       logicalOperator,
       returnValue: parsedReturnValue,
-    })
+    }
 
+    if (enabled && wouldHaveNoEffect?.({ ...rule, ...updates })) {
+      setPendingUpdates(updates)
+      return
+    }
+
+    saveUpdates(updates)
+  }
+
+  const saveUpdates = (updates: Partial<Rule>) => {
+    onUpdateRule(rule.id, updates)
+    setPendingUpdates(null)
     onOpenChange(false)
   }
 
@@ -216,15 +234,35 @@ export function EditRuleModal({
               )}
             </div>
           </div>
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="destructive" onClick={handleDelete}>
-              Delete Rule
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit">Save Changes</Button>
-          </DialogFooter>
+          {pendingUpdates ? (
+            <Alert className="border-amber-200 bg-amber-50">
+              <Lightbulb className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                This rule matches the default value and has no effect. Disable it instead?
+                <div className="flex justify-end gap-2 mt-3">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPendingUpdates(null)}>
+                    Cancel
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => saveUpdates(pendingUpdates)}>
+                    Save anyway
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => saveUpdates({ ...pendingUpdates, enabled: false })}>
+                    Disable rule
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="destructive" onClick={handleDelete}>
+                Delete Rule
+              </Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          )}
         </form>
       </DialogContent>
     </Dialog>
